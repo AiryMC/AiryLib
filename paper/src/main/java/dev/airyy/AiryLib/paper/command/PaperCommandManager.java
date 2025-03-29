@@ -48,6 +48,11 @@ public class PaperCommandManager extends CommandManager {
             return;
         }
 
+        if (rootCommand.value().contains(" ")) {
+            plugin.getLogger().warning("There cannot be any whitespace in the command name");
+            return;
+        }
+
         List<Method> defaultHandlers = getDefaultHandlers(command);
 
         PaperCommandHandler<T> commandHandler = new PaperCommandHandler<>(plugin, rootCommand.value(), Arrays.stream(rootCommand.aliases()).toList(), defaultHandlers, command, converters);
