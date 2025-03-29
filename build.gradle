@@ -1,0 +1,25 @@
+plugins {
+    id "java"
+}
+
+group = "dev.airyy"
+version = "1.0.0-SNAPSHOT"
+
+subprojects {
+    apply plugin: "java";
+
+    repositories {
+        mavenCentral()
+        maven {
+            name = "sonatype"
+            url = "https://oss.sonatype.org/content/groups/public/"
+        }
+    }
+
+    dependencies {
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = "UTF-8"
+    }
+}

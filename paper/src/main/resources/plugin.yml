@@ -1,0 +1,5 @@
+name: AiryLib
+version: "1.0.0-SNAPSHOT"
+main: dev.airyy.AiryLib.paper.AiryPlugin
+api-version: "1.21"
+authors: [ AiryyCodes ]
