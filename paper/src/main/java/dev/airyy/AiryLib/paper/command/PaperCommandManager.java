@@ -1,5 +1,6 @@
 package dev.airyy.AiryLib.paper.command;
 
+import dev.airyy.AiryLib.command.CommandData;
 import dev.airyy.AiryLib.command.CommandManager;
 import dev.airyy.AiryLib.command.annotations.Command;
 import dev.airyy.AiryLib.command.annotations.Default;
@@ -10,6 +11,7 @@ import dev.airyy.AiryLib.utils.Annotations;
 import org.bukkit.command.CommandMap;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Method;
@@ -46,28 +48,21 @@ public class PaperCommandManager extends CommandManager {
             return;
         }
 
-        Method defaultHandler = getDefaultHandler(command);
+        List<Method> defaultHandlers = getDefaultHandlers(command);
 
-        PaperCommandHandler<T> commandHandler = new PaperCommandHandler<>(plugin, rootCommand.value(), Arrays.stream(rootCommand.aliases()).toList(), defaultHandler, command, converters);
+        PaperCommandHandler<T> commandHandler = new PaperCommandHandler<>(plugin, rootCommand.value(), Arrays.stream(rootCommand.aliases()).toList(), defaultHandlers, command, converters);
         commandMap.register(rootCommand.value(), commandHandler);
     }
 
-    private static <T> @Nullable Method getDefaultHandler(T command) {
-        Method defaultHandler = null;
+    private static <T> @NotNull List<Method> getDefaultHandlers(T command) {
+        List<Method> defaultHandlers = new ArrayList<>();
         for (Method method : command.getClass().getDeclaredMethods()) {
-            /*
-            if (Annotations.hasAnnotation(method, Default.class) && defaultHandler != null) {
-                plugin.getLogger().warning("There can only be one default command handler method");
-                return;
-            }
-            */
-
             if (Annotations.hasAnnotation(method, Default.class)) {
-                defaultHandler = method;
+                defaultHandlers.add(method);
                 continue;
             }
         }
-        return defaultHandler;
+        return defaultHandlers;
     }
 
     @Override

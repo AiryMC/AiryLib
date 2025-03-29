@@ -20,18 +20,17 @@ public class PaperCommandHandler<T> extends Command {
     private final JavaPlugin plugin;
     private final String name;
     private final List<String> aliases;
-    @Nullable
-    private final Method defaultHandler;
+    private final List<Method> defaultHandlers;
     private final T commandClass;
     private final Map<String, ArgumentConverter<?>> converters;
 
-    public PaperCommandHandler(JavaPlugin plugin, String name, List<String> aliases, @Nullable Method defaultHandler, T commandClass, Map<String, ArgumentConverter<?>> converters) {
+    public PaperCommandHandler(JavaPlugin plugin, String name, List<String> aliases, List<Method> defaultHandlers, T commandClass, Map<String, ArgumentConverter<?>> converters) {
         super(name, "todo", "todo", aliases);
 
         this.plugin = plugin;
         this.name = name;
         this.aliases = aliases;
-        this.defaultHandler = defaultHandler;
+        this.defaultHandlers = defaultHandlers;
         this.commandClass = commandClass;
         this.converters = converters;
     }
@@ -41,15 +40,18 @@ public class PaperCommandHandler<T> extends Command {
         if (!label.equalsIgnoreCase(getName()))
             return true;
 
-        if (getDefaultHandler() != null) {
-            if (sender instanceof Player player) {
+        if (sender instanceof Player player) {
+            for (Method defaultHandler : getDefaultHandlers()) {
+                // Check if the current handler is the correct one for these arguments
+                if (!checkArguments(defaultHandler, args))
+                    continue;
+
                 try {
-                    handlePlayer(getDefaultHandler(), player, args);
+                    handlePlayer(defaultHandler, player, args);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
             }
-            return true;
         }
 
         return true;
@@ -81,6 +83,26 @@ public class PaperCommandHandler<T> extends Command {
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private boolean checkArguments(Method method, String[] args) {
+        // No command args, so no need to continue
+        if (args.length == 0)
+            return true;
+
+        for (int i = 0; i < method.getParameters().length; i++) {
+            Parameter parameter = method.getParameters()[i];
+            if (isParamPlayer(parameter) && i == 0)
+                continue;
+
+            String arg = args[i > 0 ? i - 1 : i];
+
+            ArgumentConverter<?> converter = converters.get(parameter.getType().getTypeName());
+            if (!converter.canConvert(arg))
+                return false;
+        }
+
+        return true;
     }
 
     private @Nullable List<Object> getParams(Method method, String[] args) throws Exception {
@@ -122,7 +144,7 @@ public class PaperCommandHandler<T> extends Command {
         return aliases;
     }
 
-    public @Nullable Method getDefaultHandler() {
-        return defaultHandler;
+    public List<Method> getDefaultHandlers() {
+        return defaultHandlers;
     }
 }
