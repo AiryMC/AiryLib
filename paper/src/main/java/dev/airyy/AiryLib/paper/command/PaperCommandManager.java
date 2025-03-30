@@ -4,8 +4,10 @@ import dev.airyy.AiryLib.command.CommandData;
 import dev.airyy.AiryLib.command.CommandManager;
 import dev.airyy.AiryLib.command.annotations.Command;
 import dev.airyy.AiryLib.command.annotations.Default;
+import dev.airyy.AiryLib.command.annotations.SubCommand;
 import dev.airyy.AiryLib.command.arguments.ArgumentConverter;
 import dev.airyy.AiryLib.command.arguments.IntegerArgument;
+import dev.airyy.AiryLib.command.arguments.StringArgument;
 import dev.airyy.AiryLib.paper.command.arguments.PlayerArgument;
 import dev.airyy.AiryLib.utils.Annotations;
 import org.bukkit.command.CommandMap;
@@ -32,6 +34,7 @@ public class PaperCommandManager extends CommandManager {
         this.converters = new HashMap<>();
 
         registerArgument(int.class, new IntegerArgument());
+        registerArgument(String.class, new StringArgument());
         registerArgument(Player.class, new PlayerArgument());
     }
 
@@ -54,20 +57,35 @@ public class PaperCommandManager extends CommandManager {
         }
 
         List<Method> defaultHandlers = getDefaultHandlers(command);
+        Map<String, List<Method>> subCommands = getSubCommands(command);
 
-        PaperCommandHandler<T> commandHandler = new PaperCommandHandler<>(plugin, rootCommand.value(), Arrays.stream(rootCommand.aliases()).toList(), defaultHandlers, command, converters);
+        PaperCommandHandler<T> commandHandler = new PaperCommandHandler<>(plugin, rootCommand.value(), Arrays.stream(rootCommand.aliases()).toList(), defaultHandlers, subCommands, command, converters);
         commandMap.register(rootCommand.value(), commandHandler);
     }
 
-    private static <T> @NotNull List<Method> getDefaultHandlers(T command) {
+    private <T> @NotNull List<Method> getDefaultHandlers(T command) {
         List<Method> defaultHandlers = new ArrayList<>();
         for (Method method : command.getClass().getDeclaredMethods()) {
             if (Annotations.hasAnnotation(method, Default.class)) {
                 defaultHandlers.add(method);
-                continue;
             }
         }
         return defaultHandlers;
+    }
+
+    private <T> @NotNull Map<String, List<Method>> getSubCommands(T command) {
+        Map<String, List<Method>> subCommands = new HashMap<>();
+        for (Method method : command.getClass().getDeclaredMethods()) {
+            if (Annotations.hasAnnotation(method, SubCommand.class)) {
+                SubCommand subCommand = method.getAnnotation(SubCommand.class);
+                if (subCommands.containsKey(subCommand.value())) {
+                    subCommands.get(subCommand.value()).add(method);
+                } else {
+                    subCommands.put(subCommand.value(), new ArrayList<>(List.of(method)));
+                }
+            }
+        }
+        return subCommands;
     }
 
     @Override
