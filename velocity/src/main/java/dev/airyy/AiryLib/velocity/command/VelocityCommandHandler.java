@@ -1,11 +1,12 @@
-package dev.airyy.AiryLib.paper.command;
+package dev.airyy.AiryLib.velocity.command;
 
+import com.velocitypowered.api.command.CommandSource;
+import com.velocitypowered.api.command.SimpleCommand;
+import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.ProxyServer;
 import dev.airyy.AiryLib.command.arguments.ArgumentConverter;
 import dev.airyy.AiryLib.utils.Strings;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
-import org.bukkit.plugin.java.JavaPlugin;
+import dev.airyy.AiryLib.velocity.AiryPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -17,9 +18,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-public class PaperCommandHandler<T> extends Command {
+public class VelocityCommandHandler<T> implements SimpleCommand {
 
-    private final JavaPlugin plugin;
+    private final ProxyServer server;
+    private final AiryPlugin plugin = AiryPlugin.getInstance();
+
     private final String name;
     private final List<String> aliases;
     private final List<Method> defaultHandlers;
@@ -27,10 +30,8 @@ public class PaperCommandHandler<T> extends Command {
     private final T commandClass;
     private final Map<String, ArgumentConverter<?>> converters;
 
-    public PaperCommandHandler(JavaPlugin plugin, String name, List<String> aliases, List<Method> defaultHandlers, Map<String, List<Method>> subCommands, T commandClass, Map<String, ArgumentConverter<?>> converters) {
-        super(name, "todo", "todo", aliases);
-
-        this.plugin = plugin;
+    public VelocityCommandHandler(ProxyServer server, String name, List<String> aliases, List<Method> defaultHandlers, Map<String, List<Method>> subCommands, T commandClass, Map<String, ArgumentConverter<?>> converters) {
+        this.server = server;
         this.name = name;
         this.aliases = aliases;
         this.defaultHandlers = defaultHandlers;
@@ -40,15 +41,18 @@ public class PaperCommandHandler<T> extends Command {
     }
 
     @Override
-    public boolean execute(@NotNull CommandSender sender, @NotNull String label, @NotNull String @NotNull [] args) {
+    public void execute(Invocation invocation) {
+        String label = invocation.alias();
+        String[] args = invocation.arguments();
+        CommandSource sender = invocation.source();
+
         if (!label.equalsIgnoreCase(getName()))
-            return true;
+            return;
 
         if (sender instanceof Player player) {
             if (args.length > 0) {
                 String subCommandName = args[0];
                 if (subCommands.containsKey(subCommandName)) {
-
                     List<String> filteredArgs = Arrays.stream(args).skip(1).toList();
                     List<Method> subCommandMethods = subCommands.get(subCommandName);
 
@@ -61,8 +65,9 @@ public class PaperCommandHandler<T> extends Command {
                             continue;
 
                         try {
-                            handlePlayer(subCommand, player, filteredArgs.toArray(new String[0]));
-                            return true;
+                            if (handlePlayer(subCommand, player, filteredArgs.toArray(new String[0]))) {
+                                return;
+                            }
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
@@ -83,26 +88,30 @@ public class PaperCommandHandler<T> extends Command {
             }
         }
 
+        return;
+    }
+
+    public boolean execute(@NotNull CommandSource sender, @NotNull String label, @NotNull String @NotNull [] args) {
         return true;
     }
 
-    private void handlePlayer(Method method, Player player, String[] args) throws Exception {
+    private boolean handlePlayer(Method method, Player player, String[] args) throws Exception {
         if (!checkArguments(method, args)) {
-            return;
+            return false;
         }
 
         List<Object> objects = getParams(method, args);
         if (objects == null) {
-            return;
+            return false;
         }
 
         // If the first parameter is of player type and there are no args
         if (method.getParameters().length > 0 && !isParamPlayer(method.getParameters()[0]) && args.length == 0) {
-            return;
+            return false;
         }
 
         if (args.length != method.getParameters().length - 1) {
-            return;
+            return false;
         }
 
         objects.addFirst(player);
@@ -113,6 +122,7 @@ public class PaperCommandHandler<T> extends Command {
             } else {
                 method.invoke(commandClass);
             }
+            return true;
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
@@ -166,12 +176,12 @@ public class PaperCommandHandler<T> extends Command {
             String arg = args[i > 0 ? i - 1 : i];
 
             if (!converters.containsKey(parameter.getType().getTypeName())) {
-                plugin.getLogger().warning("Argument converter not found for type: " + parameter.getType().getTypeName());
+                plugin.getLogger().warn("Argument converter not found for type: {}", parameter.getType().getTypeName());
                 return null;
             }
             ArgumentConverter<?> converter = converters.get(parameter.getType().getTypeName());
             if (!converter.canConvert(arg) && !Strings.isNumeric(arg)) {
-                plugin.getLogger().warning("Could not convert argument \"" + arg + "\".");
+                plugin.getLogger().warn("Could not convert argument \"{}\".", arg);
                 return null;
             }
 
