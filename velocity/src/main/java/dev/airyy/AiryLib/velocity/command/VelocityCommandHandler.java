@@ -117,7 +117,6 @@ public class VelocityCommandHandler<T> implements SimpleCommand {
         }
 
         if (sender instanceof Player player && isParamPlayer(parameters[0])) {
-            plugin.getLogger().info("Sender is a player!");
             return handlePlayer(method, player, objects);
         } else if (sender instanceof ConsoleCommandSource consoleSender && isParamConsole(parameters[0])) {
             return handleConsole(method, consoleSender, objects);

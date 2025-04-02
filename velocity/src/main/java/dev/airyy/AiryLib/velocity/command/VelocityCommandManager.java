@@ -23,13 +23,10 @@ public class VelocityCommandManager extends CommandManager {
     private final ProxyServer server;
     private final AiryPlugin plugin = AiryPlugin.getInstance();
 
-    private final Map<String, ArgumentConverter<?>> converters;
-
     public VelocityCommandManager(ProxyServer server) {
         super();
 
         this.server = server;
-        this.converters = new HashMap<>();
 
         registerArgument(int.class, new IntegerArgument());
         registerArgument(String.class, new StringArgument());
@@ -57,7 +54,7 @@ public class VelocityCommandManager extends CommandManager {
         List<Method> defaultHandlers = getDefaultHandlers(command);
         Map<String, List<Method>> subCommands = getSubCommands(command);
 
-        VelocityCommandHandler<T> commandHandler = new VelocityCommandHandler<>(server, rootCommand.value(), Arrays.stream(rootCommand.aliases()).toList(), defaultHandlers, subCommands, command, converters);
+        VelocityCommandHandler<T> commandHandler = new VelocityCommandHandler<>(server, rootCommand.value(), Arrays.stream(rootCommand.aliases()).toList(), defaultHandlers, subCommands, command, getConverters());
         CommandMeta meta = server.getCommandManager().metaBuilder(rootCommand.value())
                 .plugin(plugin)
                 .build();
@@ -92,6 +89,6 @@ public class VelocityCommandManager extends CommandManager {
 
     @Override
     public void registerArgument(Class<?> type, ArgumentConverter<?> argument) {
-        converters.put(type.getTypeName(), argument);
+        getConverters().put(type.getTypeName(), argument);
     }
 }

@@ -20,16 +20,13 @@ import java.util.*;
 public class PaperCommandManager extends CommandManager {
 
     private final JavaPlugin plugin;
-
     private final CommandMap commandMap;
-    private final Map<String, ArgumentConverter<?>> converters;
 
     public PaperCommandManager(JavaPlugin plugin) {
         super();
 
         this.plugin = plugin;
         this.commandMap = plugin.getServer().getCommandMap();
-        this.converters = new HashMap<>();
 
         registerArgument(int.class, new IntegerArgument());
         registerArgument(String.class, new StringArgument());
@@ -57,7 +54,7 @@ public class PaperCommandManager extends CommandManager {
         List<Method> defaultHandlers = getDefaultHandlers(command);
         Map<String, List<Method>> subCommands = getSubCommands(command);
 
-        PaperCommandHandler<T> commandHandler = new PaperCommandHandler<>(plugin, rootCommand.value(), Arrays.stream(rootCommand.aliases()).toList(), defaultHandlers, subCommands, command, converters);
+        PaperCommandHandler<T> commandHandler = new PaperCommandHandler<>(plugin, rootCommand.value(), Arrays.stream(rootCommand.aliases()).toList(), defaultHandlers, subCommands, command, getConverters());
         commandMap.register(rootCommand.value(), commandHandler);
     }
 
@@ -88,6 +85,6 @@ public class PaperCommandManager extends CommandManager {
 
     @Override
     public void registerArgument(Class<?> type, ArgumentConverter<?> argument) {
-        converters.put(type.getTypeName(), argument);
+        getConverters().put(type.getTypeName(), argument);
     }
 }
