@@ -5,7 +5,7 @@ import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.ConsoleCommandSource;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
-import dev.airyy.AiryLib.core.command.arguments.ArgumentConverter;
+import dev.airyy.AiryLib.core.command.arguments.IArgumentConverter;
 import dev.airyy.AiryLib.core.utils.Strings;
 import dev.airyy.AiryLib.velocity.AiryPlugin;
 import org.jetbrains.annotations.NotNull;
@@ -30,9 +30,9 @@ public class VelocityCommandHandler<T> implements SimpleCommand {
     private final List<Method> defaultHandlers;
     private final Map<String, List<Method>> subCommands;
     private final T commandClass;
-    private final Map<String, ArgumentConverter<?>> converters;
+    private final Map<String, IArgumentConverter<?>> converters;
 
-    public VelocityCommandHandler(ProxyServer server, String name, List<String> aliases, List<Method> defaultHandlers, Map<String, List<Method>> subCommands, T commandClass, Map<String, ArgumentConverter<?>> converters) {
+    public VelocityCommandHandler(ProxyServer server, String name, List<String> aliases, List<Method> defaultHandlers, Map<String, List<Method>> subCommands, T commandClass, Map<String, IArgumentConverter<?>> converters) {
         this.server = server;
         this.name = name;
         this.aliases = aliases;
@@ -199,7 +199,7 @@ public class VelocityCommandHandler<T> implements SimpleCommand {
                 continue;
             }
 
-            ArgumentConverter<?> converter = converters.get(typeName);
+            IArgumentConverter<?> converter = converters.get(typeName);
             if (converter == null || !converter.canConvert(arg)) {
                 return false;
             }
@@ -226,13 +226,13 @@ public class VelocityCommandHandler<T> implements SimpleCommand {
                 return null;
             }
 
-            ArgumentConverter<?> converter = converters.get(parameter.getType().getTypeName());
+            IArgumentConverter<?> converter = converters.get(parameter.getType().getTypeName());
             if (!converter.canConvert(arg) && !Strings.isNumeric(arg)) {
                 plugin.getLogger().warn("Could not convert argument \"{}\".", arg);
                 return null;
             }
 
-            if (!converter.isValid(parameter.getType())) {
+            if (converter.isValid(parameter.getType())) {
                 return null;
             }
 
@@ -262,7 +262,7 @@ public class VelocityCommandHandler<T> implements SimpleCommand {
             if (typeName.equals(String.class.getTypeName())) {
                 score += 1;
             } else {
-                ArgumentConverter<?> converter = converters.get(typeName);
+                IArgumentConverter<?> converter = converters.get(typeName);
                 if (converter != null && converter.canConvert(arg)) {
                     score += 2;
                 } else {

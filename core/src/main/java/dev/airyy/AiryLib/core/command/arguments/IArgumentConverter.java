@@ -1,6 +1,6 @@
 package dev.airyy.AiryLib.core.command.arguments;
 
-public interface ArgumentConverter<T> {
+public interface IArgumentConverter<T> {
     T from(String string) throws Exception;
     String to(T object);
     boolean canConvert(String string);

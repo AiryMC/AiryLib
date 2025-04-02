@@ -1,6 +1,6 @@
 package dev.airyy.AiryLib.core.command.arguments;
 
-public class IntegerArgument implements ArgumentConverter<Integer> {
+public class IntegerArgument implements IArgumentConverter<Integer> {
 
     @Override
     public Integer from(String string) {

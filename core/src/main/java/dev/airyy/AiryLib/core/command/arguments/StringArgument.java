@@ -2,7 +2,7 @@ package dev.airyy.AiryLib.core.command.arguments;
 
 import dev.airyy.AiryLib.core.utils.Strings;
 
-public class StringArgument implements ArgumentConverter<String> {
+public class StringArgument implements IArgumentConverter<String> {
     @Override
     public String from(String string) {
         return string;

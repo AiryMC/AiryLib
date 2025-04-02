@@ -1,10 +1,10 @@
 package dev.airyy.AiryLib.paper.command.arguments;
 
-import dev.airyy.AiryLib.core.command.arguments.ArgumentConverter;
+import dev.airyy.AiryLib.core.command.arguments.IArgumentConverter;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
-public class PlayerArgument implements ArgumentConverter<Player> {
+public class PlayerArgument implements IArgumentConverter<Player> {
     @Override
     public Player from(String string) {
         return Bukkit.getPlayer(string);

@@ -7,7 +7,7 @@ import dev.airyy.AiryLib.core.command.CommandManager;
 import dev.airyy.AiryLib.core.command.annotations.Command;
 import dev.airyy.AiryLib.core.command.annotations.Default;
 import dev.airyy.AiryLib.core.command.annotations.SubCommand;
-import dev.airyy.AiryLib.core.command.arguments.ArgumentConverter;
+import dev.airyy.AiryLib.core.command.arguments.IArgumentConverter;
 import dev.airyy.AiryLib.core.command.arguments.IntegerArgument;
 import dev.airyy.AiryLib.core.command.arguments.StringArgument;
 import dev.airyy.AiryLib.core.utils.Annotations;
@@ -88,7 +88,7 @@ public class VelocityCommandManager extends CommandManager {
     }
 
     @Override
-    public void registerArgument(Class<?> type, ArgumentConverter<?> argument) {
+    public void registerArgument(Class<?> type, IArgumentConverter<?> argument) {
         getConverters().put(type.getTypeName(), argument);
     }
 }

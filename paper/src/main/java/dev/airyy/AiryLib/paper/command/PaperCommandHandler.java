@@ -1,6 +1,6 @@
 package dev.airyy.AiryLib.paper.command;
 
-import dev.airyy.AiryLib.core.command.arguments.ArgumentConverter;
+import dev.airyy.AiryLib.core.command.arguments.IArgumentConverter;
 import dev.airyy.AiryLib.core.utils.Strings;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -27,9 +27,9 @@ public class PaperCommandHandler<T> extends Command {
     private final List<Method> defaultHandlers;
     private final Map<String, List<Method>> subCommands;
     private final T commandClass;
-    private final Map<String, ArgumentConverter<?>> converters;
+    private final Map<String, IArgumentConverter<?>> converters;
 
-    public PaperCommandHandler(JavaPlugin plugin, String name, List<String> aliases, List<Method> defaultHandlers, Map<String, List<Method>> subCommands, T commandClass, Map<String, ArgumentConverter<?>> converters) {
+    public PaperCommandHandler(JavaPlugin plugin, String name, List<String> aliases, List<Method> defaultHandlers, Map<String, List<Method>> subCommands, T commandClass, Map<String, IArgumentConverter<?>> converters) {
         super(name, "todo", "todo", aliases);
 
         this.plugin = plugin;
@@ -196,7 +196,7 @@ public class PaperCommandHandler<T> extends Command {
                 continue;
             }
 
-            ArgumentConverter<?> converter = converters.get(typeName);
+            IArgumentConverter<?> converter = converters.get(typeName);
             if (converter == null || !converter.canConvert(arg)) {
                 return false;
             }
@@ -223,13 +223,13 @@ public class PaperCommandHandler<T> extends Command {
                 return null;
             }
 
-            ArgumentConverter<?> converter = converters.get(parameter.getType().getTypeName());
+            IArgumentConverter<?> converter = converters.get(parameter.getType().getTypeName());
             if (!converter.canConvert(arg) && !Strings.isNumeric(arg)) {
                 plugin.getLogger().warning("Could not convert argument \"" + arg + "\".");
                 return null;
             }
 
-            if (!converter.isValid(parameter.getType())) {
+            if (converter.isValid(parameter.getType())) {
                 return null;
             }
 
@@ -256,7 +256,7 @@ public class PaperCommandHandler<T> extends Command {
             if (typeName.equals(String.class.getTypeName())) {
                 score += 1;
             } else {
-                ArgumentConverter<?> converter = converters.get(typeName);
+                IArgumentConverter<?> converter = converters.get(typeName);
                 if (converter != null && converter.canConvert(arg)) {
                     score += 2;
                 } else {

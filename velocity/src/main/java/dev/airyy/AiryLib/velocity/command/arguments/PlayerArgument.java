@@ -2,10 +2,10 @@ package dev.airyy.AiryLib.velocity.command.arguments;
 
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
-import dev.airyy.AiryLib.core.command.arguments.ArgumentConverter;
+import dev.airyy.AiryLib.core.command.arguments.IArgumentConverter;
 import dev.airyy.AiryLib.velocity.AiryPlugin;
 
-public class PlayerArgument implements ArgumentConverter<Player> {
+public class PlayerArgument implements IArgumentConverter<Player> {
     private final ProxyServer server = AiryPlugin.getInstance().getServer();
 
     @Override
