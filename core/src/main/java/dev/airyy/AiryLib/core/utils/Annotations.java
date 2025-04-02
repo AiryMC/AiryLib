@@ -1,4 +1,4 @@
-package dev.airyy.AiryLib.utils;
+package dev.airyy.AiryLib.core.utils;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;

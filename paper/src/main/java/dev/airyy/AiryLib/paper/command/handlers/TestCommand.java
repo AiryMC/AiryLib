@@ -1,8 +1,8 @@
 package dev.airyy.AiryLib.paper.command.handlers;
 
-import dev.airyy.AiryLib.command.annotations.Command;
-import dev.airyy.AiryLib.command.annotations.Default;
-import dev.airyy.AiryLib.command.annotations.SubCommand;
+import dev.airyy.AiryLib.core.command.annotations.Command;
+import dev.airyy.AiryLib.core.command.annotations.Default;
+import dev.airyy.AiryLib.core.command.annotations.SubCommand;
 import dev.airyy.AiryLib.paper.AiryPlugin;
 import org.bukkit.entity.Player;
 

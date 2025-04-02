@@ -1,4 +1,4 @@
-package dev.airyy.AiryLib.command;
+package dev.airyy.AiryLib.core.command;
 
 import java.lang.reflect.Method;
 

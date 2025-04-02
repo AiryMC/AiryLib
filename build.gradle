@@ -11,12 +11,14 @@ allprojects {
 
 subprojects {
     apply plugin: "java"
+    apply plugin: "java-library"
     apply plugin: "maven-publish"
 
     group = "dev.airyy.AiryLib"
     version = "0.0.1"
 
     repositories {
+        mavenLocal()
         mavenCentral()
         maven {
             name = "sonatype"

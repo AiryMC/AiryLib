@@ -1,4 +1,4 @@
-package dev.airyy.AiryLib.command.arguments;
+package dev.airyy.AiryLib.core.command.arguments;
 
 public class IntegerArgument implements ArgumentConverter<Integer> {
 
@@ -20,5 +20,10 @@ public class IntegerArgument implements ArgumentConverter<Integer> {
         } catch(Exception e) {
             return false;
         }
+    }
+
+    @Override
+    public boolean isValid(Class<?> clazz) {
+        return clazz == int.class;
     }
 }

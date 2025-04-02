@@ -14,7 +14,15 @@ dependencies {
     compileOnly "com.velocitypowered:velocity-api:3.4.0-SNAPSHOT"
     annotationProcessor "com.velocitypowered:velocity-api:3.4.0-SNAPSHOT"
 
-    implementation(project(":core"))
+    api project(":core")
+    api "dev.airyy.AiryLib:core:0.0.1"
+}
+
+shadowJar {
+    dependencies {
+        include(dependency("dev.airyy.AiryLib:core"))
+    }
+    relocate("dev.airyy.AiryLib.core", "dev.airyy.AiryLib.core")
 }
 
 def templateSource = file("src/main/templates")

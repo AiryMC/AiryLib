@@ -1,9 +1,9 @@
 package dev.airyy.AiryLib.velocity.command.handlers;
 
 import com.velocitypowered.api.proxy.Player;
-import dev.airyy.AiryLib.command.annotations.Command;
-import dev.airyy.AiryLib.command.annotations.Default;
-import dev.airyy.AiryLib.command.annotations.SubCommand;
+import dev.airyy.AiryLib.core.command.annotations.Command;
+import dev.airyy.AiryLib.core.command.annotations.Default;
+import dev.airyy.AiryLib.core.command.annotations.SubCommand;
 import net.kyori.adventure.text.Component;
 
 @Command("test")

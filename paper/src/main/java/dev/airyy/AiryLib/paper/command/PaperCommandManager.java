@@ -1,20 +1,18 @@
 package dev.airyy.AiryLib.paper.command;
 
-import dev.airyy.AiryLib.command.CommandData;
-import dev.airyy.AiryLib.command.CommandManager;
-import dev.airyy.AiryLib.command.annotations.Command;
-import dev.airyy.AiryLib.command.annotations.Default;
-import dev.airyy.AiryLib.command.annotations.SubCommand;
-import dev.airyy.AiryLib.command.arguments.ArgumentConverter;
-import dev.airyy.AiryLib.command.arguments.IntegerArgument;
-import dev.airyy.AiryLib.command.arguments.StringArgument;
+import dev.airyy.AiryLib.core.command.CommandManager;
+import dev.airyy.AiryLib.core.command.annotations.Command;
+import dev.airyy.AiryLib.core.command.annotations.Default;
+import dev.airyy.AiryLib.core.command.annotations.SubCommand;
+import dev.airyy.AiryLib.core.command.arguments.ArgumentConverter;
+import dev.airyy.AiryLib.core.command.arguments.IntegerArgument;
+import dev.airyy.AiryLib.core.command.arguments.StringArgument;
+import dev.airyy.AiryLib.core.utils.Annotations;
 import dev.airyy.AiryLib.paper.command.arguments.PlayerArgument;
-import dev.airyy.AiryLib.utils.Annotations;
 import org.bukkit.command.CommandMap;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Method;
 import java.util.*;

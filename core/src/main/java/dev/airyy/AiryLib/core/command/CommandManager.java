@@ -1,7 +1,6 @@
-package dev.airyy.AiryLib.command;
+package dev.airyy.AiryLib.core.command;
 
-import dev.airyy.AiryLib.command.arguments.ArgumentConverter;
-import dev.airyy.AiryLib.command.arguments.IntegerArgument;
+import dev.airyy.AiryLib.core.command.arguments.ArgumentConverter;
 
 public abstract class CommandManager {
 

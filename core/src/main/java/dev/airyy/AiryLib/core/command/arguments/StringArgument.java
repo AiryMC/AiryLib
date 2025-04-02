@@ -1,10 +1,10 @@
-package dev.airyy.AiryLib.command.arguments;
+package dev.airyy.AiryLib.core.command.arguments;
 
-import dev.airyy.AiryLib.utils.Strings;
+import dev.airyy.AiryLib.core.utils.Strings;
 
 public class StringArgument implements ArgumentConverter<String> {
     @Override
-    public String from(String string) throws Exception {
+    public String from(String string) {
         return string;
     }
 
@@ -16,5 +16,10 @@ public class StringArgument implements ArgumentConverter<String> {
     @Override
     public boolean canConvert(String string) {
         return !Strings.isNumeric(string);
+    }
+
+    @Override
+    public boolean isValid(Class<?> clazz) {
+        return clazz == String.class;
     }
 }

@@ -1,4 +1,4 @@
-package dev.airyy.AiryLib.command.annotations;
+package dev.airyy.AiryLib.core.command.annotations;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;

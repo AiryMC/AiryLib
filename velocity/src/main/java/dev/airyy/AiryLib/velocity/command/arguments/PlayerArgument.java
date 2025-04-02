@@ -2,7 +2,7 @@ package dev.airyy.AiryLib.velocity.command.arguments;
 
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
-import dev.airyy.AiryLib.command.arguments.ArgumentConverter;
+import dev.airyy.AiryLib.core.command.arguments.ArgumentConverter;
 import dev.airyy.AiryLib.velocity.AiryPlugin;
 
 public class PlayerArgument implements ArgumentConverter<Player> {
@@ -21,5 +21,10 @@ public class PlayerArgument implements ArgumentConverter<Player> {
     @Override
     public boolean canConvert(String string) {
         return server.getPlayer(string).isPresent();
+    }
+
+    @Override
+    public boolean isValid(Class<?> clazz) {
+        return clazz == Player.class;
     }
 }

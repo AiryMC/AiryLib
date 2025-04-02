@@ -1,6 +1,6 @@
 package dev.airyy.AiryLib.paper;
 
-import dev.airyy.AiryLib.command.CommandManager;
+import dev.airyy.AiryLib.core.command.CommandManager;
 import dev.airyy.AiryLib.paper.command.PaperCommandManager;
 import dev.airyy.AiryLib.paper.command.handlers.TestCommand;
 import org.bukkit.plugin.java.JavaPlugin;

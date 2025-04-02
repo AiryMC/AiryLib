@@ -6,9 +6,8 @@ import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.airyy.AiryLib.BuildConstants;
-import dev.airyy.AiryLib.command.CommandManager;
+import dev.airyy.AiryLib.core.command.CommandManager;
 import dev.airyy.AiryLib.velocity.command.VelocityCommandManager;
-import dev.airyy.AiryLib.velocity.command.handlers.TestCommand;
 import org.slf4j.Logger;
 
 @Plugin(id = "airylib", name = "AiryLib", version = BuildConstants.VERSION, authors = {"AiryyCodes"})
@@ -28,7 +27,7 @@ public class AiryPlugin {
         instance = this;
 
         commandManager = new VelocityCommandManager(server);
-        commandManager.registerCommand(new TestCommand());
+        // commandManager.registerCommand(new TestCommand());
 
         onEnable();
     }
