@@ -1,9 +1,11 @@
 package dev.airyy.AiryLib.velocity.command;
 
 import com.velocitypowered.api.command.CommandMeta;
+import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.airyy.AiryLib.core.command.CommandManager;
+import dev.airyy.AiryLib.core.command.ICommandSender;
 import dev.airyy.AiryLib.core.command.annotations.Command;
 import dev.airyy.AiryLib.core.command.annotations.Default;
 import dev.airyy.AiryLib.core.command.annotations.SubCommand;
@@ -54,7 +56,7 @@ public class VelocityCommandManager extends CommandManager {
         List<Method> defaultHandlers = getDefaultHandlers(command);
         Map<String, List<Method>> subCommands = getSubCommands(command);
 
-        VelocityCommandHandler<T> commandHandler = new VelocityCommandHandler<>(server, rootCommand.value(), Arrays.stream(rootCommand.aliases()).toList(), defaultHandlers, subCommands, command, getConverters());
+        VelocityCommandHandler<T> commandHandler = new VelocityCommandHandler<>(server, this, rootCommand.value(), Arrays.stream(rootCommand.aliases()).toList(), defaultHandlers, subCommands, command, getConverters());
         CommandMeta meta = server.getCommandManager().metaBuilder(rootCommand.value())
                 .plugin(plugin)
                 .build();
@@ -90,5 +92,15 @@ public class VelocityCommandManager extends CommandManager {
     @Override
     public void registerArgument(Class<?> type, IArgumentConverter<?> argument) {
         getConverters().put(type.getTypeName(), argument);
+    }
+
+    @Override
+    public ICommandSender getCommandSender(Object sender) {
+        if (!(sender instanceof CommandSource)) {
+            plugin.getLogger().warn("Given object is not a command sender");
+            return null;
+        }
+
+        return new VelocityCommandSender((CommandSource) sender);
     }
 }

@@ -1,6 +1,7 @@
 package dev.airyy.AiryLib.paper.command;
 
 import dev.airyy.AiryLib.core.command.CommandManager;
+import dev.airyy.AiryLib.core.command.ICommandSender;
 import dev.airyy.AiryLib.core.command.annotations.Command;
 import dev.airyy.AiryLib.core.command.annotations.Default;
 import dev.airyy.AiryLib.core.command.annotations.SubCommand;
@@ -10,6 +11,7 @@ import dev.airyy.AiryLib.core.command.arguments.StringArgument;
 import dev.airyy.AiryLib.core.utils.Annotations;
 import dev.airyy.AiryLib.paper.command.arguments.PlayerArgument;
 import org.bukkit.command.CommandMap;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
@@ -54,7 +56,7 @@ public class PaperCommandManager extends CommandManager {
         List<Method> defaultHandlers = getDefaultHandlers(command);
         Map<String, List<Method>> subCommands = getSubCommands(command);
 
-        PaperCommandHandler<T> commandHandler = new PaperCommandHandler<>(plugin, rootCommand.value(), Arrays.stream(rootCommand.aliases()).toList(), defaultHandlers, subCommands, command, getConverters());
+        PaperCommandHandler<T> commandHandler = new PaperCommandHandler<>(plugin, this, rootCommand.value(), Arrays.stream(rootCommand.aliases()).toList(), defaultHandlers, subCommands, command, getConverters());
         commandMap.register(rootCommand.value(), commandHandler);
     }
 
@@ -86,5 +88,15 @@ public class PaperCommandManager extends CommandManager {
     @Override
     public void registerArgument(Class<?> type, IArgumentConverter<?> argument) {
         getConverters().put(type.getTypeName(), argument);
+    }
+
+    @Override
+    public ICommandSender getCommandSender(Object sender) {
+        if (!(sender instanceof CommandSender)) {
+            plugin.getLogger().warning("Given object is not a command sender");
+            return null;
+        }
+
+        return new PaperCommandSender((CommandSender) sender);
     }
 }

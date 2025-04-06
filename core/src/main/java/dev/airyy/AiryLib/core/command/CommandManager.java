@@ -17,6 +17,8 @@ public abstract class CommandManager {
 
     public abstract void registerArgument(Class<?> type, IArgumentConverter<?> argument);
 
+    public abstract ICommandSender getCommandSender(Object sender);
+
     protected Map<String, IArgumentConverter<?>> getConverters() {
         return converters;
     }

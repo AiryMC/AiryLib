@@ -2,7 +2,6 @@ package dev.airyy.AiryLib.paper;
 
 import dev.airyy.AiryLib.core.command.CommandManager;
 import dev.airyy.AiryLib.paper.command.PaperCommandManager;
-import dev.airyy.AiryLib.paper.command.handlers.TestCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class AiryPlugin extends JavaPlugin {
@@ -12,7 +11,7 @@ public class AiryPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         commandManager = new PaperCommandManager(this);
-        commandManager.registerCommand(new TestCommand());
+        // commandManager.registerCommand(new TestCommand());
 
         super.onEnable();
     }
