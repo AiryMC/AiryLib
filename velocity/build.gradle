@@ -1,7 +1,4 @@
-plugins {
-    id "java"
-    id "com.gradleup.shadow" version "8.3.6"
-}
+version = "0.0.2"
 
 repositories {
     maven {
@@ -14,15 +11,9 @@ dependencies {
     compileOnly "com.velocitypowered:velocity-api:3.4.0-SNAPSHOT"
     annotationProcessor "com.velocitypowered:velocity-api:3.4.0-SNAPSHOT"
 
-    api project(":core")
-    api "dev.airyy.AiryLib:core:0.0.1"
-}
+    api "dev.rollczi:litecommands-velocity:3.9.7"
 
-shadowJar {
-    dependencies {
-        include(dependency("dev.airyy.AiryLib:core"))
-    }
-    relocate("dev.airyy.AiryLib.core", "dev.airyy.AiryLib.core")
+    api project(":core")
 }
 
 def templateSource = file("src/main/templates")
@@ -40,5 +31,3 @@ sourceSets.main.java.srcDir(generateTemplates.map { it.outputs })
 
 project.idea.project.settings.taskTriggers.afterSync generateTemplates
 project.eclipse.synchronizationTasks(generateTemplates)
-
-build.dependsOn += shadowJar

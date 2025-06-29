@@ -1,27 +1,33 @@
 package dev.airyy.AiryLib.paper;
 
-import dev.airyy.AiryLib.core.command.CommandManager;
-import dev.airyy.AiryLib.paper.command.PaperCommandManager;
+import dev.airyy.AiryLib.core.IAiryPlugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public class AiryPlugin extends JavaPlugin {
+public class AiryPlugin extends JavaPlugin implements IAiryPlugin {
 
-    private CommandManager commandManager;
+    private static AiryPlugin instance;
 
     @Override
     public void onEnable() {
-        commandManager = new PaperCommandManager(this);
-        // commandManager.registerCommand(new TestCommand());
-
-        super.onEnable();
+        onInit();
     }
 
     @Override
     public void onDisable() {
-        super.onDisable();
+        onDestroy();
     }
 
-    public CommandManager getCommandManager() {
-        return commandManager;
+    @Override
+    public void onInit() {
+
+    }
+
+    @Override
+    public void onDestroy() {
+
+    }
+
+    public static <T extends AiryPlugin> T getInstance() {
+        return (T) instance;
     }
 }

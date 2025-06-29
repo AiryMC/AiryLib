@@ -3,39 +3,52 @@ package dev.airyy.AiryLib.velocity;
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
+import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
+import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.airyy.AiryLib.BuildConstants;
-import dev.airyy.AiryLib.core.command.CommandManager;
-import dev.airyy.AiryLib.velocity.command.VelocityCommandManager;
+import dev.airyy.AiryLib.core.IAiryPlugin;
 import org.slf4j.Logger;
 
+import java.nio.file.Path;
+
 @Plugin(id = "airylib", name = "AiryLib", version = BuildConstants.VERSION, authors = {"AiryyCodes"})
-public class AiryPlugin {
+public class AiryPlugin implements IAiryPlugin {
 
     private static AiryPlugin instance;
 
-    @Inject
-    private Logger logger;
+    private final Logger logger;
+    private final ProxyServer server;
+    private final Path dataDirectory;
 
     @Inject
-    private ProxyServer server;
-    private CommandManager commandManager;
+    public AiryPlugin(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory) {
+        instance = this;
+
+        this.server = server;
+        this.logger = logger;
+        this.dataDirectory = dataDirectory;
+    }
 
     @Subscribe
     private void onProxyInitialization(ProxyInitializeEvent event) {
-        instance = this;
-
-        commandManager = new VelocityCommandManager(server);
-        // commandManager.registerCommand(new TestCommand());
-
-        onEnable();
+        onInit();
     }
 
-    public void onEnable() {
+    @Subscribe
+    public void onProxyShutdown(ProxyShutdownEvent event) {
+        onDestroy();
     }
 
-    public void onDisable() {
+    @Override
+    public void onInit() {
+
+    }
+
+    @Override
+    public void onDestroy() {
+
     }
 
     public static <T extends AiryPlugin> T getInstance() {
@@ -50,7 +63,7 @@ public class AiryPlugin {
         return server;
     }
 
-    public CommandManager getCommandManager() {
-        return commandManager;
+    public Path getDataDirectory() {
+        return dataDirectory;
     }
 }

@@ -1,4 +1,5 @@
 rootProject.name = "AiryLib"
+
 include "core"
 include "paper"
 include "velocity"
