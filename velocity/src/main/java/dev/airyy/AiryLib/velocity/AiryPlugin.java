@@ -10,15 +10,26 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.airyy.AiryLib.BuildConstants;
 import dev.airyy.AiryLib.core.IAiryPlugin;
+import dev.airyy.AiryLib.core.command.CommandManager;
 import dev.airyy.AiryLib.core.command.argument.impl.BooleanArgument;
 import dev.airyy.AiryLib.core.command.argument.impl.IntegerArgument;
+import dev.airyy.AiryLib.core.command.argument.impl.StringArgument;
 import dev.airyy.AiryLib.velocity.command.VelocityCommandManager;
 import dev.airyy.AiryLib.velocity.command.argument.PlayerArgument;
-import dev.airyy.AiryLib.velocity.command.impl.VelocityTestCommand;
 import org.slf4j.Logger;
 
 import java.nio.file.Path;
 
+/**
+ * Base velocity implementation of the {@link IAiryPlugin} interface
+ *
+ * <p>This class provides multiple components needed for making plugins at ease, including {@link CommandManager} and others.</p>
+ *
+ * <p>Intended to be extended by plugin developers who want a simplified
+ * starting point for their own plugins.
+ *
+ * @see IAiryPlugin
+ */
 @Plugin(id = "airylib", name = "AiryLib", version = BuildConstants.VERSION, authors = {"AiryyCodes"})
 public class AiryPlugin implements IAiryPlugin {
 
@@ -49,6 +60,8 @@ public class AiryPlugin implements IAiryPlugin {
         commandManager.registerArgumentParser(boolean.class, new BooleanArgument());
         commandManager.registerArgumentParser(Boolean.class, new BooleanArgument());
 
+        commandManager.registerArgumentParser(String.class, new StringArgument());
+
         commandManager.registerArgumentParser(Player.class, new PlayerArgument());
 
         // commandManager.register(new VelocityTestCommand());
@@ -61,14 +74,24 @@ public class AiryPlugin implements IAiryPlugin {
         onDestroy();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>This base implementation does nothing. Override in subclasses to register listeners,
+     * load configurations, or perform setup tasks.
+     */
     @Override
     public void onInit() {
-
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>This base implementation does nothing. Override in subclasses to clean up resources,
+     * save state, or unregister listeners.
+     */
     @Override
     public void onDestroy() {
-
     }
 
     public static <T extends AiryPlugin> T getInstance() {
@@ -85,5 +108,9 @@ public class AiryPlugin implements IAiryPlugin {
 
     public Path getDataDirectory() {
         return dataDirectory;
+    }
+
+    public VelocityCommandManager getCommandManager() {
+        return commandManager;
     }
 }

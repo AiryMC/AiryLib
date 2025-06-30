@@ -1,7 +1,5 @@
 package dev.airyy.AiryLib.core;
 
-import org.jetbrains.annotations.ApiStatus;
-
 /**
  * Interface representing a plugin for the Airy system.
  * <p>

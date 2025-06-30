@@ -21,8 +21,8 @@ public abstract class CommandManager {
      * Registers an argument parser for a specific target type.
      *
      * <p>The parser will be used to convert raw string arguments into the appropriate
-     * Java object during command execution. Each parser is typically associated with
-     * the type it parses via {@link IArgument#getType()}.
+     * Java object during command execution. Each parser is associated with
+     * the type it parses, specified explicitly by the {@code clazz} parameter.
      *
      * @param <T>    the target type the parser handles
      * @param clazz the {@link Class<T>} instance to register

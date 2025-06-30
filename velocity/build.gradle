@@ -1,4 +1,4 @@
-version = "0.0.2"
+version = "0.1.0"
 
 repositories {
     maven {
@@ -10,8 +10,6 @@ repositories {
 dependencies {
     compileOnly "com.velocitypowered:velocity-api:3.4.0-SNAPSHOT"
     annotationProcessor "com.velocitypowered:velocity-api:3.4.0-SNAPSHOT"
-
-    api "dev.rollczi:litecommands-velocity:3.9.7"
 
     api project(":core")
 }

@@ -4,6 +4,7 @@ import dev.airyy.AiryLib.core.command.CommandManager;
 import dev.airyy.AiryLib.core.command.ICommandExecutor;
 import dev.airyy.AiryLib.core.command.ICommandSender;
 import dev.airyy.AiryLib.core.command.argument.IArgument;
+import net.kyori.adventure.text.Component;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.jetbrains.annotations.NotNull;
@@ -32,15 +33,14 @@ public class PaperCommand extends Command implements ICommandExecutor {
         ICommandSender baseSender = new PaperCommandSender(sender);
 
         if (args.length == 0) {
-            callDefaultHandler(baseSender, defaultHandler, args);
+            callDefaultHandler(baseSender, defaultHandler, handlerInstance);
             return true;
         }
 
         String sub = args[0].toLowerCase();
         Method method = subCommands.get(sub);
         if (method == null) {
-            // sender.sendMessage("§cUnknown subcommand. Type /<command> help for a list.");
-            sender.sendMessage("§cUnknown subcommand.");
+            sender.sendMessage(Component.text("§cUnknown subcommand."));
             return true;
         }
 
@@ -48,7 +48,7 @@ public class PaperCommand extends Command implements ICommandExecutor {
             callHandler(baseSender, method, handlerInstance, args, commandManager, label, sub);
         } catch (Exception e) {
             e.printStackTrace();
-            sender.sendMessage("Error: " + e.getMessage());
+            sender.sendMessage(Component.text("Error: " + e.getMessage()));
         }
 
         return true;

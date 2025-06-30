@@ -1,5 +1,6 @@
 package dev.airyy.AiryLib.core.command;
 
+import dev.airyy.AiryLib.core.command.annotation.OptionalArg;
 import dev.airyy.AiryLib.core.command.argument.IArgument;
 
 import java.lang.reflect.Method;
@@ -47,37 +48,56 @@ public interface ICommandExecutor {
 
         // Count only required parameters
         for (int i = 1; i < params.length; i++) {
-            requiredArgs++;
+            if (!params[i].isAnnotationPresent(OptionalArg.class)) {
+                requiredArgs++;
+            }
         }
 
         // Validate argument count
         if (providedArgs < requiredArgs) {
-            String usage = UsageGenerator.generateUsage("test", subcommandName, handler);
+            String usage = UsageGenerator.generateUsage(commandName, subcommandName, handler);
             sender.sendMessage("§cUsage: " + usage);
             return;
         }
 
         if (!isVarargs && providedArgs > totalParams) {
-            String usage = UsageGenerator.generateUsage("test", subcommandName, handler);
+            String usage = UsageGenerator.generateUsage(commandName, subcommandName, handler);
             sender.sendMessage("§cUsage: " + usage);
             return;
         }
 
         for (int i = 1; i < params.length; i++) {
+            int argIndex = i; // args[1] is first user arg (after subcommand)
+
             Class<?> type = params[i].getType();
             IArgument<?> parser = commandManager.getArgumentParser(type);
             if (parser == null) {
-                sender.sendMessage("§cInternal error: unsupported argument type.");
                 throw new IllegalArgumentException("No parser for type: " + type.getSimpleName());
             }
 
+            boolean isOptional = params[i].isAnnotationPresent(OptionalArg.class);
+            OptionalArg optional = params[i].getAnnotation(OptionalArg.class);
+
+            if (argIndex >= args.length) {
+                if (isOptional) {
+                    // Use default value or null
+                    String defaultRaw = optional.defaultValue();
+                    parsedArgs[i] = defaultRaw.isEmpty() ? null : parser.parse(defaultRaw);
+                    continue;
+                } else {
+                    sender.sendMessage("§cMissing argument: " + type.getSimpleName());
+                    return;
+                }
+            }
+
             try {
-                parsedArgs[i] = parser.parse(args[i]);
+                parsedArgs[i] = parser.parse(args[argIndex]);
             } catch (Exception e) {
-                sender.sendMessage("§cInvalid " + type.getSimpleName() + ": §f'" + args[i] + "'");
+                sender.sendMessage("§cInvalid " + type.getSimpleName() + ": §f" + args[argIndex]);
                 return;
             }
         }
+
 
         try {
             handler.invoke(handlerInstance, parsedArgs);
