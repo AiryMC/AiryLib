@@ -6,9 +6,15 @@ import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
+import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.airyy.AiryLib.BuildConstants;
 import dev.airyy.AiryLib.core.IAiryPlugin;
+import dev.airyy.AiryLib.core.command.argument.impl.BooleanArgument;
+import dev.airyy.AiryLib.core.command.argument.impl.IntegerArgument;
+import dev.airyy.AiryLib.velocity.command.VelocityCommandManager;
+import dev.airyy.AiryLib.velocity.command.argument.PlayerArgument;
+import dev.airyy.AiryLib.velocity.command.impl.VelocityTestCommand;
 import org.slf4j.Logger;
 
 import java.nio.file.Path;
@@ -22,6 +28,8 @@ public class AiryPlugin implements IAiryPlugin {
     private final ProxyServer server;
     private final Path dataDirectory;
 
+    private VelocityCommandManager commandManager;
+
     @Inject
     public AiryPlugin(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory) {
         instance = this;
@@ -33,6 +41,18 @@ public class AiryPlugin implements IAiryPlugin {
 
     @Subscribe
     private void onProxyInitialization(ProxyInitializeEvent event) {
+        commandManager = new VelocityCommandManager(this);
+
+        commandManager.registerArgumentParser(int.class, new IntegerArgument());
+        commandManager.registerArgumentParser(Integer.class, new IntegerArgument());
+
+        commandManager.registerArgumentParser(boolean.class, new BooleanArgument());
+        commandManager.registerArgumentParser(Boolean.class, new BooleanArgument());
+
+        commandManager.registerArgumentParser(Player.class, new PlayerArgument());
+
+        // commandManager.register(new VelocityTestCommand());
+
         onInit();
     }
 
