@@ -33,24 +33,7 @@ public class VelocityCommand implements SimpleCommand, ICommandExecutor {
         CommandSource sender = invocation.source();
         ICommandSender baseSender = new VelocityCommandSender(sender);
 
-        if (args.length == 0) {
-            callDefaultHandler(baseSender, defaultHandler, handlerInstance);
-            return;
-        }
-
-        String sub = args[0].toLowerCase();
-        Method method = subCommands.get(sub);
-        if (method == null) {
-            sender.sendMessage(Component.text("§cUnknown subcommand."));
-            return;
-        }
-
-        try {
-            callHandler(baseSender, method, handlerInstance, args, commandManager, invocation.alias(), sub);
-        } catch (Exception e) {
-            e.printStackTrace();
-            sender.sendMessage(Component.text("Error: " + e.getMessage()));
-        }
+        execute(baseSender, args, handlerInstance, defaultHandler, subCommands, commandManager, invocation.alias());
     }
 
     @Override

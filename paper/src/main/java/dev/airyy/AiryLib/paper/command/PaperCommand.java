@@ -29,28 +29,10 @@ public class PaperCommand extends Command implements ICommandExecutor {
     }
 
     @Override
-    public boolean execute(@NotNull CommandSender sender, @NotNull String label, String[] args) {
+    public boolean execute(@NotNull CommandSender sender, @NotNull String label, String @NotNull [] args) {
         ICommandSender baseSender = new PaperCommandSender(sender);
 
-        if (args.length == 0) {
-            callDefaultHandler(baseSender, defaultHandler, handlerInstance);
-            return true;
-        }
-
-        String sub = args[0].toLowerCase();
-        Method method = subCommands.get(sub);
-        if (method == null) {
-            sender.sendMessage(Component.text("§cUnknown subcommand."));
-            return true;
-        }
-
-        try {
-            callHandler(baseSender, method, handlerInstance, args, commandManager, label, sub);
-        } catch (Exception e) {
-            e.printStackTrace();
-            sender.sendMessage(Component.text("Error: " + e.getMessage()));
-        }
-
+        execute(baseSender, args, handlerInstance, defaultHandler, subCommands, commandManager, label);
         return true;
     }
 

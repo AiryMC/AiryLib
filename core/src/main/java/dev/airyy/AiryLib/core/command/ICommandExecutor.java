@@ -2,11 +2,38 @@ package dev.airyy.AiryLib.core.command;
 
 import dev.airyy.AiryLib.core.command.annotation.OptionalArg;
 import dev.airyy.AiryLib.core.command.argument.IArgument;
+import net.kyori.adventure.text.Component;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.Map;
 
 public interface ICommandExecutor {
+
+    default void execute(ICommandSender sender, String[] args, Object handlerInstance, Method defaultHandler, Map<String, Method> subCommands, CommandManager commandManager, String commandName) {
+        if (args.length == 0) {
+            if (defaultHandler != null) {
+                callDefaultHandler(sender, defaultHandler, handlerInstance);
+            } else {
+                sender.sendMessage("§cNo subcommand specified. Use /" + commandName + " help");
+            }
+            return;
+        }
+
+        String sub = args[0].toLowerCase();
+        Method method = subCommands.get(sub);
+        if (method == null) {
+            sender.sendMessage("§cUnknown subcommand.");
+            return;
+        }
+
+        try {
+            callHandler(sender, method, handlerInstance, args, commandManager, commandName, sub);
+        } catch (Exception e) {
+            e.printStackTrace();
+            sender.sendMessage("Error: " + e.getMessage());
+        }
+    }
 
     default void callDefaultHandler(ICommandSender sender, Method handler, Object handlerInstance) {
         Object[] parsedArgs = new Object[handler.getParameterCount()];

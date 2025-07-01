@@ -5,8 +5,13 @@ import dev.airyy.AiryLib.core.command.CommandManager;
 import dev.airyy.AiryLib.core.command.argument.impl.BooleanArgument;
 import dev.airyy.AiryLib.core.command.argument.impl.IntegerArgument;
 import dev.airyy.AiryLib.core.command.argument.impl.StringArgument;
+import dev.airyy.AiryLib.core.config.ConfigManager;
 import dev.airyy.AiryLib.paper.command.PaperCommandManager;
 import dev.airyy.AiryLib.paper.command.argument.PlayerArgument;
+import dev.airyy.AiryLib.paper.config.parser.ComponentParser;
+import dev.airyy.AiryLib.paper.config.parser.LocationParser;
+import net.kyori.adventure.text.Component;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -28,6 +33,8 @@ public class AiryPlugin extends JavaPlugin implements IAiryPlugin {
 
     @Override
     public void onEnable() {
+        instance = this;
+
         commandManager = new PaperCommandManager(this);
 
         commandManager.registerArgumentParser(int.class, new IntegerArgument());
@@ -39,6 +46,9 @@ public class AiryPlugin extends JavaPlugin implements IAiryPlugin {
         commandManager.registerArgumentParser(String.class, new StringArgument());
 
         commandManager.registerArgumentParser(Player.class, new PlayerArgument());
+
+        ConfigManager.registerParser(Component.class, new ComponentParser());
+        ConfigManager.registerParser(Location.class, new LocationParser());
 
         // commandManager.register(new TestCommand());
 
