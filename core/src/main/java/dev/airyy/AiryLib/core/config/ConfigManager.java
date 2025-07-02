@@ -2,6 +2,8 @@ package dev.airyy.AiryLib.core.config;
 
 import dev.airyy.AiryLib.core.config.annotation.Config;
 import dev.airyy.AiryLib.core.config.annotation.ConfigField;
+import dev.airyy.AiryLib.core.config.annotation.ConfigVersion;
+import dev.airyy.AiryLib.core.config.migration.IConfigMigration;
 import dev.airyy.AiryLib.core.config.parser.IConfigParser;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
@@ -20,138 +22,181 @@ public class ConfigManager {
 
     private static final Map<Class<?>, IConfigParser<?>> parsers = new HashMap<>();
 
+    public static <T extends BaseConfig> T createConfig(Class<T> clazz, File dataFolder) throws Exception {
+        return clazz.getDeclaredConstructor(File.class).newInstance(dataFolder);
+    }
+
     public static <T> void registerParser(Class<T> clazz, IConfigParser<T> parser) {
         parsers.put(clazz, parser);
     }
 
-    public static <T> T load(Class<T> clazz, File dataFolder) throws Exception {
-        Config configAnno = clazz.getAnnotation(Config.class);
-        if (configAnno == null) {
-            throw new IllegalArgumentException("Missing @Config annotation on class '" + clazz.getSimpleName() + "'");
-        }
-
-        if (!dataFolder.exists()) dataFolder.mkdirs();
-
-        File file = new File(dataFolder, configAnno.value());
-        Yaml yaml = new Yaml();
-        T instance = clazz.getDeclaredConstructor().newInstance();
-
-        if (!file.exists()) {
-            save(instance, dataFolder);
-            return instance;
-        }
-
-        try (InputStream fileStream = new FileInputStream(file)) {
-            Map<String, Object> data = yaml.load(fileStream);
-            if (data == null) {
-                data = new LinkedHashMap<>();
-            }
-
-            for (Field field : clazz.getDeclaredFields()) {
-                ConfigField configField = field.getAnnotation(ConfigField.class);
-                if (configField == null) continue;
-
-                String key = !configField.value().isEmpty() ? configField.value() : field.getName();
-                Object rawValue = getNested(data, key);
-
-                if (rawValue != null || containsNestedKey(data, key)) {
-                    field.setAccessible(true);
-                    Class<?> type = field.getType();
-
-                    if (parsers.containsKey(type)) {
-                        IConfigParser<?> parser = parsers.get(type);
-                        Object parsedValue = parser.parse(rawValue);
-                        field.set(instance, parsedValue);
-                    } else {
-                        field.set(instance, rawValue);
-                    }
-                } else {
-                    field.setAccessible(true);
-                    field.set(instance, null);
-                }
-            }
-
-            return instance;
-        }
+    public static <T extends BaseConfig> T reload(T config) throws Exception {
+        return load(config);
     }
 
-    public static void save(Object configInstance, File dataFolder) throws Exception {
-        Class<?> clazz = configInstance.getClass();
-        Config configAnno = clazz.getAnnotation(Config.class);
-        if (configAnno == null) return;
+    public static <T extends BaseConfig> T load(T instance) throws Exception {
+        File dataFolder = instance.getDataFolder();
+        Config configAnno = instance.getClass().getAnnotation(Config.class);
+        if (configAnno == null)
+            throw new IllegalArgumentException("Missing @Config annotation on " + instance.getClass().getSimpleName());
 
         if (!dataFolder.exists()) dataFolder.mkdirs();
+        File file = new File(dataFolder, configAnno.value());
+
+        // If the file doesn't exist, save default config and return
+        if (!file.exists()) {
+            save(instance);
+            return instance;
+        }
+
+        Yaml yaml = new Yaml();
+        Map<String, Object> data;
+        try (InputStream in = new FileInputStream(file)) {
+            data = yaml.load(in);
+        }
+
+        if (data == null) data = new LinkedHashMap<>();
+
+        // Load config version from file
+        int fileVersion = -1;
+        int targetVersion = -1;
+        Field versionField = null;
+
+        for (Field field : instance.getClass().getDeclaredFields()) {
+            if (field.isAnnotationPresent(ConfigVersion.class)) {
+                versionField = field;
+                field.setAccessible(true);
+                targetVersion = field.getInt(instance);
+                Object value = getNested(data, getKey(field));
+                if (value instanceof Number number) {
+                    fileVersion = number.intValue();
+                }
+                break;
+            }
+        }
+
+        if (fileVersion >= 0 && fileVersion < targetVersion) {
+            for (IConfigMigration migration : instance.getMigrations()) {
+                if (migration.fromVersion() >= fileVersion && migration.fromVersion() < targetVersion) {
+                    migration.migrate(data);
+                }
+            }
+            // Update version in data
+            if (versionField != null)
+                insertNested(data, getKey(versionField), targetVersion);
+        }
+
+        // Load all fields into memory
+        for (Field field : instance.getClass().getDeclaredFields()) {
+            if (!field.isAnnotationPresent(ConfigField.class)) continue;
+            field.setAccessible(true);
+
+            String key = getKey(field);
+            Object rawValue = getNested(data, key);
+
+            Class<?> type = field.getType();
+            if (rawValue == null) {
+                field.set(instance, null);
+            } else if (parsers.containsKey(type)) {
+                IConfigParser<?> parser = parsers.get(type);
+                field.set(instance, parser.parse(rawValue));
+            } else {
+                field.set(instance, rawValue);
+            }
+        }
+
+        // Save updated file if version mismatch or fields missing
+        boolean needsUpdate = (fileVersion != targetVersion) || hasMissingFields(instance.getClass(), data);
+        if (needsUpdate) {
+            save(instance);
+        }
+
+        return instance;
+    }
+
+
+    public static <T extends BaseConfig> void save(T instance) throws Exception {
+        File dataFolder = instance.getDataFolder();
+        Class<?> clazz = instance.getClass();
+        Config configAnno = clazz.getAnnotation(Config.class);
+        if (configAnno == null) return;
 
         File file = new File(dataFolder, configAnno.value());
         Map<String, Object> data = new LinkedHashMap<>();
 
         for (Field field : clazz.getDeclaredFields()) {
-            ConfigField configField = field.getAnnotation(ConfigField.class);
-            if (configField == null) continue;
-
-            String key = !configField.value().isEmpty() ? configField.value() : field.getName();
+            if (!field.isAnnotationPresent(ConfigField.class)) continue;
             field.setAccessible(true);
-            Object fieldValue = field.get(configInstance);
-            Class<?> type = field.getType();
 
-            if (fieldValue == null)
-                continue;
+            String key = getKey(field);
+            Object value = field.get(instance);
+            if (value == null) continue;
 
-            if (parsers.containsKey(type)) {
-                IConfigParser parser = parsers.get(type);
-                Object serialized = parser.serialize(fieldValue);
-                insertNested(data, key, serialized);
-            } else {
-                insertNested(data, key, fieldValue);
+            if (parsers.containsKey(field.getType())) {
+                IConfigParser<Object> parser = (IConfigParser<Object>) parsers.get(field.getType());
+                value = parser.serialize(value);
             }
+
+            insertNested(data, key, value);
         }
 
-        // Save file to disk
+        DumperOptions opts = new DumperOptions();
+        opts.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+        Yaml yaml = new Yaml(opts);
+
         try (Writer writer = Files.newBufferedWriter(file.toPath())) {
-            DumperOptions options = new DumperOptions();
-            options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-            Yaml yaml = new Yaml(options);
             yaml.dump(data, writer);
         }
     }
 
+
+    private static String getKey(Field field) {
+        ConfigField configField = field.getAnnotation(ConfigField.class);
+        return (configField != null && !configField.value().isEmpty())
+                ? configField.value()
+                : field.getName();
+    }
+
     @SuppressWarnings("unchecked")
-    private static void insertNested(Map<String, Object> root, String keyPath, Object value) {
-        String[] parts = keyPath.split("\\.");
+    private static void insertNested(Map<String, Object> root, String path, Object value) {
+        String[] parts = path.split("\\.");
         Map<String, Object> current = root;
-
         for (int i = 0; i < parts.length - 1; i++) {
-            String part = parts[i];
-            current = (Map<String, Object>) current.computeIfAbsent(part, k -> new LinkedHashMap<>());
+            current = (Map<String, Object>) current.computeIfAbsent(parts[i], k -> new LinkedHashMap<>());
         }
-
         current.put(parts[parts.length - 1], value);
     }
 
-    @SuppressWarnings("unchecked")
-    public static Object getNested(Map<String, Object> root, String keyPath) {
-        String[] parts = keyPath.split("\\.");
+    private static Object getNested(Map<String, Object> root, String path) {
+        String[] parts = path.split("\\.");
         Object current = root;
-
         for (String part : parts) {
-            if (!(current instanceof Map)) return null;
-            current = ((Map<String, Object>) current).get(part);
+            if (!(current instanceof Map<?, ?> map)) return null;
+            current = map.get(part);
             if (current == null) return null;
         }
-
         return current;
     }
 
+    private static boolean hasMissingFields(Class<?> clazz, Map<String, Object> data) {
+        for (Field field : clazz.getDeclaredFields()) {
+            if (!field.isAnnotationPresent(ConfigField.class)) continue;
+            String key = getKey(field);
+            if (!containsNestedKey(data, key)) return true;
+        }
+        return false;
+    }
+
+    @SuppressWarnings("unchecked")
     private static boolean containsNestedKey(Map<String, Object> root, String keyPath) {
         String[] parts = keyPath.split("\\.");
         Object current = root;
-
         for (String part : parts) {
-            if (!(current instanceof Map<?, ?> map)) return false;
+            if (!(current instanceof Map)) return false;
+            Map<String, Object> map = (Map<String, Object>) current;
             if (!map.containsKey(part)) return false;
             current = map.get(part);
         }
-
         return true;
     }
 

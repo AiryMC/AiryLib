@@ -23,7 +23,9 @@ public class LocationParser implements IConfigParser<Location> {
         double x = getDouble(map, "x", 0.0);
         double y = getDouble(map, "y", 0.0);
         double z = getDouble(map, "z", 0.0);
-        return new Location(world, x, y, z);
+        float pitch = getFloat(map, "pitch", 0.0f);
+        float yaw = getFloat(map, "yaw", 0.0f);
+        return new Location(world, x, y, z, yaw, pitch);
     }
 
     @Override
@@ -33,6 +35,8 @@ public class LocationParser implements IConfigParser<Location> {
         map.put("x", value.x());
         map.put("y", value.y());
         map.put("z", value.z());
+        map.put("pitch", value.getPitch());
+        map.put("yaw", value.getYaw());
         return map;
     }
 
@@ -40,6 +44,24 @@ public class LocationParser implements IConfigParser<Location> {
         Object val = map.get(key);
         if (val instanceof Number number) {
             return number.doubleValue();
+        }
+        if (val instanceof String s) {
+            try {
+                return Double.parseDouble(s);
+            } catch (NumberFormatException ignored) {}
+        }
+        return defaultValue;
+    }
+
+    private float getFloat(Map<?, ?> map, String key, float defaultValue) {
+        Object val = map.get(key);
+        if (val instanceof Number number) {
+            return number.floatValue();
+        }
+        if (val instanceof String s) {
+            try {
+                return Float.parseFloat(s);
+            } catch (NumberFormatException ignored) {}
         }
         return defaultValue;
     }
