@@ -5,6 +5,7 @@ import dev.airyy.AiryLib.core.config.annotation.ConfigField;
 import dev.airyy.AiryLib.core.config.annotation.ConfigVersion;
 import dev.airyy.AiryLib.core.config.migration.IConfigMigration;
 import dev.airyy.AiryLib.core.config.parser.IConfigParser;
+import dev.airyy.AiryLib.core.config.parser.ListParser;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
@@ -13,9 +14,12 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.Writer;
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ConfigManager {
@@ -96,10 +100,36 @@ public class ConfigManager {
 
             Class<?> type = field.getType();
             if (rawValue == null) {
+
                 field.set(instance, null);
+
             } else if (parsers.containsKey(type)) {
+
                 IConfigParser<?> parser = parsers.get(type);
                 field.set(instance, parser.parse(rawValue));
+
+            } else if (List.class.isAssignableFrom(type)) {
+                // Check for a parser for the parameterized type in the List
+                Type genericType = field.getGenericType();
+
+                if (genericType instanceof ParameterizedType pt) {
+                    Type itemType = pt.getActualTypeArguments()[0];
+
+                    if (itemType instanceof Class<?> itemClass) {
+                        IConfigParser<?> elementParser = parsers.get(itemClass);
+                        if (elementParser != null) {
+                            IConfigParser<?> listParser = new ListParser<>(elementParser);
+                            Object parsed = listParser.parse(rawValue);
+                            field.set(instance, parsed);
+                            continue;
+                        } else {
+                            System.err.println("No parser found for list element type: " + itemClass.getName());
+                        }
+                    } else {
+                        System.err.println("Unsupported list item type: " + itemType);
+                    }
+                }
+
             } else {
                 field.set(instance, rawValue);
             }
@@ -122,6 +152,8 @@ public class ConfigManager {
         if (configAnno == null) return;
 
         File file = new File(dataFolder, configAnno.value());
+        file.getParentFile().mkdirs();
+
         Map<String, Object> data = new LinkedHashMap<>();
 
         for (Field field : clazz.getDeclaredFields()) {
@@ -132,9 +164,25 @@ public class ConfigManager {
             Object value = field.get(instance);
             if (value == null) continue;
 
-            if (parsers.containsKey(field.getType())) {
-                IConfigParser<Object> parser = (IConfigParser<Object>) parsers.get(field.getType());
+            Type genericType = field.getGenericType();
+            Class<?> fieldType = field.getType();
+
+            if (parsers.containsKey(fieldType)) {
+                IConfigParser<Object> parser = (IConfigParser<Object>) parsers.get(fieldType);
                 value = parser.serialize(value);
+
+            } else if (List.class.isAssignableFrom(fieldType) && genericType instanceof ParameterizedType pt) {
+                Type itemType = pt.getActualTypeArguments()[0];
+                if (itemType instanceof Class<?> itemClass) {
+                    IConfigParser<?> elementParser = parsers.get(itemClass);
+                    if (elementParser != null) {
+                        System.out.println("Using element parser for " + itemClass.getName());
+                        value = serializeList((List<?>) value, elementParser);
+                    } else {
+                        System.err.println("No parser registered for list element type: " + itemClass.getName());
+                    }
+
+                }
             }
 
             insertNested(data, key, value);
@@ -149,6 +197,11 @@ public class ConfigManager {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private static <T> Object serializeList(List<?> rawList, IConfigParser<T> elementParser) {
+        ListParser<T> listParser = new ListParser<>(elementParser);
+        return listParser.serialize((List<T>) rawList);
+    }
 
     private static String getKey(Field field) {
         ConfigField configField = field.getAnnotation(ConfigField.class);

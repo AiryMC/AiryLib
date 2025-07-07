@@ -1,6 +1,7 @@
 package dev.airyy.AiryLib.paper.command;
 
 import dev.airyy.AiryLib.core.command.ICommandSender;
+import dev.airyy.AiryLib.core.command.annotation.Permission;
 import org.bukkit.command.CommandSender;
 
 public class PaperCommandSender implements ICommandSender {
@@ -12,7 +13,6 @@ public class PaperCommandSender implements ICommandSender {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public CommandSender getSender() {
         return sender;
     }
@@ -20,5 +20,10 @@ public class PaperCommandSender implements ICommandSender {
     @Override
     public void sendMessage(String message) {
         sender.sendMessage(message);
+    }
+
+    @Override
+    public boolean hasPermission(String permission) {
+        return sender.hasPermission(permission);
     }
 }

@@ -3,8 +3,8 @@ package dev.airyy.AiryLib.paper.command;
 import dev.airyy.AiryLib.core.command.CommandManager;
 import dev.airyy.AiryLib.core.command.ICommandExecutor;
 import dev.airyy.AiryLib.core.command.ICommandSender;
+import dev.airyy.AiryLib.core.command.annotation.Permission;
 import dev.airyy.AiryLib.core.command.argument.IArgument;
-import net.kyori.adventure.text.Component;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.jetbrains.annotations.NotNull;
@@ -64,5 +64,23 @@ public class PaperCommand extends Command implements ICommandExecutor {
         if (parser == null) return List.of();
 
         return parser.suggest(args[args.length - 1]);
+    }
+
+    @Override
+    public boolean testPermission(@NotNull CommandSender target) {
+        if (!handlerInstance.getClass().isAnnotationPresent(Permission.class))
+            return super.testPermission(target);
+
+        Permission permission = handlerInstance.getClass().getAnnotation(Permission.class);
+        return target.hasPermission(permission.value());
+    }
+
+    @Override
+    public boolean testPermissionSilent(@NotNull CommandSender target) {
+        if (!handlerInstance.getClass().isAnnotationPresent(Permission.class))
+            return super.testPermission(target);
+
+        Permission permission = handlerInstance.getClass().getAnnotation(Permission.class);
+        return target.hasPermission(permission.value());
     }
 }

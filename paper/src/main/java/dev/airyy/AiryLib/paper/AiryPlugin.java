@@ -6,14 +6,21 @@ import dev.airyy.AiryLib.core.command.argument.impl.BooleanArgument;
 import dev.airyy.AiryLib.core.command.argument.impl.IntegerArgument;
 import dev.airyy.AiryLib.core.command.argument.impl.StringArgument;
 import dev.airyy.AiryLib.core.config.ConfigManager;
+import dev.airyy.AiryLib.core.config.parser.ListParser;
 import dev.airyy.AiryLib.paper.command.PaperCommandManager;
 import dev.airyy.AiryLib.paper.command.argument.PlayerArgument;
 import dev.airyy.AiryLib.paper.config.parser.ComponentParser;
 import dev.airyy.AiryLib.paper.config.parser.LocationParser;
+import dev.airyy.AiryLib.paper.config.parser.MaterialParser;
+import dev.airyy.AiryLib.paper.inventory.listener.InventoryListener;
+import dev.airyy.AiryLib.paper.item.ItemManager;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.ArrayList;
 
 /**
  * Base paper implementation of the {@link IAiryPlugin} interface
@@ -30,6 +37,7 @@ public class AiryPlugin extends JavaPlugin implements IAiryPlugin {
     private static AiryPlugin instance;
 
     private PaperCommandManager commandManager;
+    private ItemManager itemManager;
 
     @Override
     public void onEnable() {
@@ -49,6 +57,11 @@ public class AiryPlugin extends JavaPlugin implements IAiryPlugin {
 
         ConfigManager.registerParser(Component.class, new ComponentParser());
         ConfigManager.registerParser(Location.class, new LocationParser());
+        ConfigManager.registerParser(Material.class, new MaterialParser());
+
+        getServer().getPluginManager().registerEvents(new InventoryListener(), this);
+
+        itemManager = new ItemManager();
 
         // commandManager.register(new TestCommand());
 
@@ -82,6 +95,7 @@ public class AiryPlugin extends JavaPlugin implements IAiryPlugin {
 
     /**
      * <p>Gets the instance of the current plugin</p>
+     *
      * @return the current instance of the plugin
      */
     @SuppressWarnings("unchecked")
@@ -89,7 +103,11 @@ public class AiryPlugin extends JavaPlugin implements IAiryPlugin {
         return (T) instance;
     }
 
-    public PaperCommandManager getCommandManager() {
+    public final PaperCommandManager getCommandManager() {
         return commandManager;
+    }
+
+    public final ItemManager getItemManager() {
+        return itemManager;
     }
 }

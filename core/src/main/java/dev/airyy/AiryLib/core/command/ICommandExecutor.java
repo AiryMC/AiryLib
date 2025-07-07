@@ -1,6 +1,7 @@
 package dev.airyy.AiryLib.core.command;
 
 import dev.airyy.AiryLib.core.command.annotation.OptionalArg;
+import dev.airyy.AiryLib.core.command.annotation.Permission;
 import dev.airyy.AiryLib.core.command.argument.IArgument;
 import net.kyori.adventure.text.Component;
 
@@ -25,6 +26,14 @@ public interface ICommandExecutor {
         if (method == null) {
             sender.sendMessage("§cUnknown subcommand.");
             return;
+        }
+
+        if (method.isAnnotationPresent(Permission.class)) {
+            Permission permission = method.getAnnotation(Permission.class);
+            if (!sender.hasPermission(permission.value())) {
+                sender.sendMessage("§cYou do not have permission to use this command.");
+                return;
+            }
         }
 
         try {
