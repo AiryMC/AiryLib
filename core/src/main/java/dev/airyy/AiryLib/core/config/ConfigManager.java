@@ -9,14 +9,12 @@ import dev.airyy.AiryLib.core.config.parser.ListParser;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.io.Writer;
+import java.io.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -47,12 +45,21 @@ public class ConfigManager {
         if (!dataFolder.exists()) dataFolder.mkdirs();
         File file = new File(dataFolder, configAnno.value());
 
-        // If the file doesn't exist, save default config and return
+        // If the file doesn't exist, copy default config from resources (with comments preserved)
         if (!file.exists()) {
-            save(instance);
-            return instance;
+            String resourcePath = configAnno.value(); // path inside resources (e.g. "defaults/config.yml")
+            System.out.println("Creating config from bundled default: " + resourcePath);
+
+            try {
+                copyDefaultFromResources(file, resourcePath);
+                System.out.println("Copied default config from resources: " + resourcePath);
+            } catch (IOException e) {
+                System.err.println("Could not copy default config from resources, saving blank config instead.");
+                save(instance); // fallback if default not found
+            }
         }
 
+        // Load YAML data from the config file on disk (which now exists)
         Yaml yaml = new Yaml();
         Map<String, Object> data;
         try (InputStream in = new FileInputStream(file)) {
@@ -79,42 +86,36 @@ public class ConfigManager {
             }
         }
 
+        // Perform migrations if needed
         if (fileVersion >= 0 && fileVersion < targetVersion) {
             for (IConfigMigration migration : instance.getMigrations()) {
                 if (migration.fromVersion() >= fileVersion && migration.fromVersion() < targetVersion) {
                     migration.migrate(data);
                 }
             }
-            // Update version in data
+            // Update version in data after migration
             if (versionField != null)
                 insertNested(data, getKey(versionField), targetVersion);
         }
 
-        // Load all fields into memory
+        // Load all annotated config fields into instance
         for (Field field : instance.getClass().getDeclaredFields()) {
             if (!field.isAnnotationPresent(ConfigField.class)) continue;
             field.setAccessible(true);
 
             String key = getKey(field);
             Object rawValue = getNested(data, key);
-
             Class<?> type = field.getType();
+
             if (rawValue == null) {
-
-                field.set(instance, null);
-
+                field.set(instance, null); // or skip to keep default Java values if you prefer
             } else if (parsers.containsKey(type)) {
-
                 IConfigParser<?> parser = parsers.get(type);
                 field.set(instance, parser.parse(rawValue));
-
             } else if (List.class.isAssignableFrom(type)) {
-                // Check for a parser for the parameterized type in the List
                 Type genericType = field.getGenericType();
-
                 if (genericType instanceof ParameterizedType pt) {
                     Type itemType = pt.getActualTypeArguments()[0];
-
                     if (itemType instanceof Class<?> itemClass) {
                         IConfigParser<?> elementParser = parsers.get(itemClass);
                         if (elementParser != null) {
@@ -129,13 +130,12 @@ public class ConfigManager {
                         System.err.println("Unsupported list item type: " + itemType);
                     }
                 }
-
             } else {
                 field.set(instance, rawValue);
             }
         }
 
-        // Save updated file if version mismatch or fields missing
+        // Save updated file if version mismatch or missing fields detected
         boolean needsUpdate = (fileVersion != targetVersion) || hasMissingFields(instance.getClass(), data);
         if (needsUpdate) {
             save(instance);
@@ -143,7 +143,6 @@ public class ConfigManager {
 
         return instance;
     }
-
 
     public static <T extends BaseConfig> void save(T instance) throws Exception {
         File dataFolder = instance.getDataFolder();
@@ -253,4 +252,15 @@ public class ConfigManager {
         return true;
     }
 
+    private static void copyDefaultFromResources(File destination, String resourcePath) throws IOException {
+        try (InputStream in = ConfigManager.class.getClassLoader().getResourceAsStream(resourcePath)) {
+            if (in == null) {
+                throw new FileNotFoundException("Default config resource not found: " + resourcePath);
+            }
+            destination.getParentFile().mkdirs();
+            Files.copy(in, destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
