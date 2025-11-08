@@ -6,17 +6,18 @@ import dev.airyy.AiryLib.core.config.annotation.ConfigVersion;
 import dev.airyy.AiryLib.core.config.migration.IConfigMigration;
 import dev.airyy.AiryLib.core.config.parser.IConfigParser;
 import dev.airyy.AiryLib.core.config.parser.ListParser;
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.Yaml;
+import dev.dejvokep.boostedyaml.YamlDocument;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -59,14 +60,16 @@ public class ConfigManager {
             }
         }
 
-        // Load YAML data from the config file on disk (which now exists)
-        Yaml yaml = new Yaml();
-        Map<String, Object> data;
-        try (InputStream in = new FileInputStream(file)) {
-            data = yaml.load(in);
-        }
+        // Load YAML data from the config file using BoostedYAML (preserves comments)
+        InputStream defaultStream = ConfigManager.class.getClassLoader()
+                .getResourceAsStream(configAnno.value());
 
-        if (data == null) data = new LinkedHashMap<>();
+        YamlDocument config;
+        if (defaultStream != null) {
+            config = YamlDocument.create(file, defaultStream);
+        } else {
+            config = YamlDocument.create(file);
+        }
 
         // Load config version from file
         int fileVersion = -1;
@@ -78,7 +81,7 @@ public class ConfigManager {
                 versionField = field;
                 field.setAccessible(true);
                 targetVersion = field.getInt(instance);
-                Object value = getNested(data, getKey(field));
+                Object value = getNested(config, getKey(field));
                 if (value instanceof Number number) {
                     fileVersion = number.intValue();
                 }
@@ -90,12 +93,11 @@ public class ConfigManager {
         if (fileVersion >= 0 && fileVersion < targetVersion) {
             for (IConfigMigration migration : instance.getMigrations()) {
                 if (migration.fromVersion() >= fileVersion && migration.fromVersion() < targetVersion) {
-                    migration.migrate(data);
+                    migration.migrate(config);
                 }
             }
-            // Update version in data after migration
-            if (versionField != null)
-                insertNested(data, getKey(versionField), targetVersion);
+            insertNested(config, getKey(versionField), targetVersion);
+            config.save();
         }
 
         // Load all annotated config fields into instance
@@ -104,7 +106,7 @@ public class ConfigManager {
             field.setAccessible(true);
 
             String key = getKey(field);
-            Object rawValue = getNested(data, key);
+            Object rawValue = getNested(config, key);
             Class<?> type = field.getType();
 
             if (rawValue == null) {
@@ -136,7 +138,7 @@ public class ConfigManager {
         }
 
         // Save updated file if version mismatch or missing fields detected
-        boolean needsUpdate = (fileVersion != targetVersion) || hasMissingFields(instance.getClass(), data);
+        boolean needsUpdate = (fileVersion != targetVersion) || hasMissingFields(instance.getClass(), config);
         if (needsUpdate) {
             save(instance);
         }
@@ -153,15 +155,26 @@ public class ConfigManager {
         File file = new File(dataFolder, configAnno.value());
         file.getParentFile().mkdirs();
 
-        Map<String, Object> data = new LinkedHashMap<>();
+        // Load existing document or create new one
+        YamlDocument config;
+        if (file.exists()) {
+            config = YamlDocument.create(file);
+        } else {
+            // Optionally load from resource or create empty document
+            config = YamlDocument.create(file);
+        }
 
+        // Set all annotated fields into the document
         for (Field field : clazz.getDeclaredFields()) {
             if (!field.isAnnotationPresent(ConfigField.class)) continue;
             field.setAccessible(true);
 
             String key = getKey(field);
             Object value = field.get(instance);
-            if (value == null) continue;
+            if (value == null) {
+                config.set(key, null); // Clear key if null
+                continue;
+            }
 
             Type genericType = field.getGenericType();
             Class<?> fieldType = field.getType();
@@ -169,34 +182,32 @@ public class ConfigManager {
             if (parsers.containsKey(fieldType)) {
                 IConfigParser<Object> parser = (IConfigParser<Object>) parsers.get(fieldType);
                 value = parser.serialize(value);
+                config.set(key, value);
 
             } else if (List.class.isAssignableFrom(fieldType) && genericType instanceof ParameterizedType pt) {
                 Type itemType = pt.getActualTypeArguments()[0];
                 if (itemType instanceof Class<?> itemClass) {
                     IConfigParser<?> elementParser = parsers.get(itemClass);
                     if (elementParser != null) {
-                        System.out.println("Using element parser for " + itemClass.getName());
-                        value = serializeList((List<?>) value, elementParser);
+                        Object serializedList = serializeList((List<?>) value, elementParser);
+                        config.set(key, serializedList);
                     } else {
                         System.err.println("No parser registered for list element type: " + itemClass.getName());
+                        config.set(key, value); // fallback
                     }
-
+                } else {
+                    config.set(key, value); // fallback
                 }
+            } else {
+                config.set(key, value);
             }
-
-            insertNested(data, key, value);
         }
 
-        DumperOptions opts = new DumperOptions();
-        opts.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-        Yaml yaml = new Yaml(opts);
-
-        try (Writer writer = Files.newBufferedWriter(file.toPath())) {
-            yaml.dump(data, writer);
-        }
+        // Save document - this preserves comments and formatting
+        config.save();
     }
 
-    @SuppressWarnings("unchecked")
+
     private static <T> Object serializeList(List<?> rawList, IConfigParser<T> elementParser) {
         ListParser<T> listParser = new ListParser<>(elementParser);
         return listParser.serialize((List<T>) rawList);
@@ -209,47 +220,25 @@ public class ConfigManager {
                 : field.getName();
     }
 
-    @SuppressWarnings("unchecked")
-    private static void insertNested(Map<String, Object> root, String path, Object value) {
-        String[] parts = path.split("\\.");
-        Map<String, Object> current = root;
-        for (int i = 0; i < parts.length - 1; i++) {
-            current = (Map<String, Object>) current.computeIfAbsent(parts[i], k -> new LinkedHashMap<>());
-        }
-        current.put(parts[parts.length - 1], value);
+    private static void insertNested(YamlDocument config, String path, Object value) {
+        config.set(path, value);
     }
 
-    private static Object getNested(Map<String, Object> root, String path) {
-        String[] parts = path.split("\\.");
-        Object current = root;
-        for (String part : parts) {
-            if (!(current instanceof Map<?, ?> map)) return null;
-            current = map.get(part);
-            if (current == null) return null;
-        }
-        return current;
+    private static Object getNested(YamlDocument config, String path) {
+        return config.get(path);
     }
 
-    private static boolean hasMissingFields(Class<?> clazz, Map<String, Object> data) {
+    private static boolean hasMissingFields(Class<?> clazz, YamlDocument config) {
         for (Field field : clazz.getDeclaredFields()) {
             if (!field.isAnnotationPresent(ConfigField.class)) continue;
             String key = getKey(field);
-            if (!containsNestedKey(data, key)) return true;
+            if (!containsNestedKey(config, key)) return true;
         }
         return false;
     }
 
-    @SuppressWarnings("unchecked")
-    private static boolean containsNestedKey(Map<String, Object> root, String keyPath) {
-        String[] parts = keyPath.split("\\.");
-        Object current = root;
-        for (String part : parts) {
-            if (!(current instanceof Map)) return false;
-            Map<String, Object> map = (Map<String, Object>) current;
-            if (!map.containsKey(part)) return false;
-            current = map.get(part);
-        }
-        return true;
+    private static boolean containsNestedKey(YamlDocument config, String path) {
+        return config.get(path) != null;
     }
 
     private static void copyDefaultFromResources(File destination, String resourcePath) throws IOException {

@@ -76,7 +76,6 @@ public abstract class Item {
     }
 
     public void give(Player player, int slot) {
-        player.sendMessage(Component.text("Giving item..."));
         player.getInventory().setItem(slot, getItemStack());
     }
 
