@@ -6,7 +6,10 @@ import dev.airyy.AiryLib.core.config.annotation.ConfigVersion;
 import dev.airyy.AiryLib.core.config.migration.IConfigMigration;
 import dev.airyy.AiryLib.core.config.parser.IConfigParser;
 import dev.airyy.AiryLib.core.config.parser.ListParser;
+import dev.airyy.AiryLib.core.config.parser.MapParser;
+import dev.airyy.AiryLib.core.config.parser.SetParser;
 import dev.dejvokep.boostedyaml.YamlDocument;
+import dev.dejvokep.boostedyaml.block.implementation.Section;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -17,9 +20,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ConfigManager {
 
@@ -38,179 +39,187 @@ public class ConfigManager {
     }
 
     public static <T extends BaseConfig> T load(T instance) throws Exception {
+        Class<?> clazz = instance.getClass();
+
         File dataFolder = instance.getDataFolder();
         Config configAnno = instance.getClass().getAnnotation(Config.class);
         if (configAnno == null)
             throw new IllegalArgumentException("Missing @Config annotation on " + instance.getClass().getSimpleName());
 
-        if (!dataFolder.exists()) dataFolder.mkdirs();
-        File file = new File(dataFolder, configAnno.value());
+        File file = setupConfigFile(instance, configAnno);
 
-        // If the file doesn't exist, copy default config from resources (with comments preserved)
-        if (!file.exists()) {
-            String resourcePath = configAnno.value(); // path inside resources (e.g. "defaults/config.yml")
-            System.out.println("Creating config from bundled default: " + resourcePath);
+        YamlDocument config = loadYamlDocument(file, configAnno.value());
 
-            try {
-                copyDefaultFromResources(file, resourcePath);
-                System.out.println("Copied default config from resources: " + resourcePath);
-            } catch (IOException e) {
-                System.err.println("Could not copy default config from resources, saving blank config instead.");
-                save(instance); // fallback if default not found
-            }
-        }
+        boolean migrated = handleMigrations(instance, config);
 
-        // Load YAML data from the config file using BoostedYAML (preserves comments)
-        InputStream defaultStream = ConfigManager.class.getClassLoader()
-                .getResourceAsStream(configAnno.value());
-
-        YamlDocument config;
-        if (defaultStream != null) {
-            config = YamlDocument.create(file, defaultStream);
-        } else {
-            config = YamlDocument.create(file);
-        }
-
-        // Load config version from file
-        int fileVersion = -1;
-        int targetVersion = -1;
-        Field versionField = null;
-
-        for (Field field : instance.getClass().getDeclaredFields()) {
-            if (field.isAnnotationPresent(ConfigVersion.class)) {
-                versionField = field;
-                field.setAccessible(true);
-                targetVersion = field.getInt(instance);
-                Object value = getNested(config, getKey(field));
-                if (value instanceof Number number) {
-                    fileVersion = number.intValue();
-                }
-                break;
-            }
-        }
-
-        // Perform migrations if needed
-        if (fileVersion >= 0 && fileVersion < targetVersion) {
-            for (IConfigMigration migration : instance.getMigrations()) {
-                if (migration.fromVersion() >= fileVersion && migration.fromVersion() < targetVersion) {
-                    migration.migrate(config);
-                }
-            }
-            insertNested(config, getKey(versionField), targetVersion);
-            config.save();
-        }
-
-        // Load all annotated config fields into instance
-        for (Field field : instance.getClass().getDeclaredFields()) {
-            if (!field.isAnnotationPresent(ConfigField.class)) continue;
-            field.setAccessible(true);
-
-            String key = getKey(field);
-            Object rawValue = getNested(config, key);
-            Class<?> type = field.getType();
-
-            if (rawValue == null) {
-                field.set(instance, null); // or skip to keep default Java values if you prefer
-            } else if (parsers.containsKey(type)) {
-                IConfigParser<?> parser = parsers.get(type);
-                field.set(instance, parser.parse(rawValue));
-            } else if (List.class.isAssignableFrom(type)) {
-                Type genericType = field.getGenericType();
-                if (genericType instanceof ParameterizedType pt) {
-                    Type itemType = pt.getActualTypeArguments()[0];
-                    if (itemType instanceof Class<?> itemClass) {
-                        IConfigParser<?> elementParser = parsers.get(itemClass);
-                        if (elementParser != null) {
-                            IConfigParser<?> listParser = new ListParser<>(elementParser);
-                            Object parsed = listParser.parse(rawValue);
-                            field.set(instance, parsed);
-                            continue;
-                        } else {
-                            System.err.println("No parser found for list element type: " + itemClass.getName());
-                        }
-                    } else {
-                        System.err.println("Unsupported list item type: " + itemType);
-                    }
-                }
-            } else {
-                field.set(instance, rawValue);
-            }
-        }
+        injectConfigFields(instance, config);
 
         // Save updated file if version mismatch or missing fields detected
-        boolean needsUpdate = (fileVersion != targetVersion) || hasMissingFields(instance.getClass(), config);
-        if (needsUpdate) {
+        if (migrated || hasMissingFields(clazz, config)) {
             save(instance);
         }
 
         return instance;
     }
 
-    public static <T extends BaseConfig> void save(T instance) throws Exception {
-        File dataFolder = instance.getDataFolder();
-        Class<?> clazz = instance.getClass();
-        Config configAnno = clazz.getAnnotation(Config.class);
-        if (configAnno == null) return;
+    private static <T extends BaseConfig> void injectConfigFields(T instance, YamlDocument config) throws IllegalAccessException {
+        // Load all annotated config fields into instance
+        for (Field field : instance.getClass().getDeclaredFields()) {
+            if (!field.isAnnotationPresent(ConfigField.class))
+                continue;
 
-        File file = new File(dataFolder, configAnno.value());
-        file.getParentFile().mkdirs();
-
-        // Load existing document or create new one
-        YamlDocument config;
-        if (file.exists()) {
-            config = YamlDocument.create(file);
-        } else {
-            // Optionally load from resource or create empty document
-            config = YamlDocument.create(file);
-        }
-
-        // Set all annotated fields into the document
-        for (Field field : clazz.getDeclaredFields()) {
-            if (!field.isAnnotationPresent(ConfigField.class)) continue;
             field.setAccessible(true);
-
             String key = getKey(field);
-            Object value = field.get(instance);
-            if (value == null) {
-                config.set(key, null); // Clear key if null
+            Object rawValue = getNested(config, key);
+
+            if (rawValue instanceof Section section) {
+                rawValue = section.getStringRouteMappedValues(false);
+            }
+
+            if (rawValue == null) {
+                setDefaultValue(instance, field);
                 continue;
             }
 
-            Type genericType = field.getGenericType();
-            Class<?> fieldType = field.getType();
+            IConfigParser<?> parser = getParserForType(field.getGenericType());
 
-            if (parsers.containsKey(fieldType)) {
-                IConfigParser<Object> parser = (IConfigParser<Object>) parsers.get(fieldType);
-                value = parser.serialize(value);
-                config.set(key, value);
-
-            } else if (List.class.isAssignableFrom(fieldType) && genericType instanceof ParameterizedType pt) {
-                Type itemType = pt.getActualTypeArguments()[0];
-                if (itemType instanceof Class<?> itemClass) {
-                    IConfigParser<?> elementParser = parsers.get(itemClass);
-                    if (elementParser != null) {
-                        Object serializedList = serializeList((List<?>) value, elementParser);
-                        config.set(key, serializedList);
-                    } else {
-                        System.err.println("No parser registered for list element type: " + itemClass.getName());
-                        config.set(key, value); // fallback
-                    }
-                } else {
-                    config.set(key, value); // fallback
-                }
+            if (parser != null) {
+                field.set(instance, parser.parse(rawValue));
             } else {
-                config.set(key, value);
+                field.set(instance, rawValue);
             }
         }
+    }
 
-        // Save document - this preserves comments and formatting
+    private static <T extends BaseConfig> void setDefaultValue(T instance, Field field) throws IllegalAccessException {
+        if (List.class.isAssignableFrom(field.getType())) {
+            field.set(instance, new ArrayList<>());
+        } else if (Map.class.isAssignableFrom(field.getType())) {
+            field.set(instance, new HashMap<>());
+        } else {
+            field.set(instance, null);
+        }
+    }
+
+    private static <T extends BaseConfig> boolean handleMigrations(T instance, YamlDocument config) {
+        Field versionField = getVersionField(instance.getClass());
+        if (versionField == null)
+            return false; // No versioning used
+
+        try {
+            versionField.setAccessible(true);
+            int targetVersion = versionField.getInt(instance);
+            int fileVersion = config.getInt(getKey(versionField), -1);
+
+            if (fileVersion >= 0 && fileVersion < targetVersion) {
+                System.out.println("Migrating config from v" + fileVersion + " to v" + targetVersion);
+                for (IConfigMigration migration : instance.getMigrations()) {
+                    if (migration.fromVersion() >= fileVersion && migration.fromVersion() < targetVersion) {
+                        migration.migrate(config);
+                    }
+                }
+                // Update version in config object
+                insertNested(config, getKey(versionField), targetVersion);
+                config.save();
+                return true;
+            }
+        } catch (IllegalAccessException | IOException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    private static Field getVersionField(Class<?> clazz) {
+        for (Field field : clazz.getDeclaredFields()) {
+            if (field.isAnnotationPresent(ConfigVersion.class)) {
+                return field;
+            }
+        }
+        return null;
+    }
+
+    private static <T extends BaseConfig> File setupConfigFile(T instance, Config configAnno) throws Exception {
+        File dataFolder = instance.getDataFolder();
+        if (!dataFolder.exists()) dataFolder.mkdirs();
+
+        File file = new File(dataFolder, configAnno.value());
+
+        // Copy default if it doesn't exist
+        if (!file.exists()) {
+            String resourcePath = configAnno.value();
+            System.out.println("Creating config from bundled default: " + resourcePath);
+            try {
+                copyDefaultFromResources(file, resourcePath);
+            } catch (IOException e) {
+                System.err.println("Could not copy default config. Saving blank fallback.");
+                save(instance);
+            }
+        }
+        return file;
+    }
+
+    private static YamlDocument loadYamlDocument(File file, String resourcePath) throws IOException {
+        InputStream defaultStream = ConfigManager.class.getClassLoader().getResourceAsStream(resourcePath);
+        return (defaultStream != null)
+                ? YamlDocument.create(file, defaultStream)
+                : YamlDocument.create(file);
+    }
+
+    public static <T extends BaseConfig> void save(T instance) throws Exception {
+        Class<?> clazz = instance.getClass();
+        Config configAnno = clazz.getAnnotation(Config.class);
+        if (configAnno == null)
+            return;
+
+        File file = prepareFile(instance.getDataFolder(), configAnno.value());
+        file.getParentFile().mkdirs();
+
+        // Load existing document or create new one
+        YamlDocument config = YamlDocument.create(file);
+
+        updateDocumentFields(instance, config);
+
         config.save();
     }
 
+    private static <T extends BaseConfig> void updateDocumentFields(T instance, YamlDocument config) throws IllegalAccessException {
+        for (Field field : instance.getClass().getDeclaredFields()) {
+            if (!field.isAnnotationPresent(ConfigField.class))
+                continue;
 
-    private static <T> Object serializeList(List<?> rawList, IConfigParser<T> elementParser) {
-        ListParser<T> listParser = new ListParser<>(elementParser);
-        return listParser.serialize((List<T>) rawList);
+            field.setAccessible(true);
+            String key = getKey(field);
+            Object rawValue = field.get(instance);
+
+            if (rawValue == null) {
+                config.remove(key); // Explicitly remove
+            } else {
+                Object serializedValue = serializeValue(field, rawValue);
+                config.set(key, serializedValue);
+            }
+        }
+    }
+
+    private static File prepareFile(File dataFolder, String filePath) {
+        File file = new File(dataFolder, filePath);
+        if (!file.getParentFile().exists()) {
+            file.getParentFile().mkdirs();
+        }
+        return file;
+    }
+
+    private static Object serializeValue(Field field, Object value) {
+        if (value == null)
+            return null;
+
+        IConfigParser<Object> parser = (IConfigParser<Object>) getParserForType(field.getGenericType());
+
+        if (parser != null) {
+            return parser.serialize(value);
+        }
+
+        // If no parser exists, let the YAML engine try to handle it
+        return value;
     }
 
     private static String getKey(Field field) {
@@ -230,9 +239,12 @@ public class ConfigManager {
 
     private static boolean hasMissingFields(Class<?> clazz, YamlDocument config) {
         for (Field field : clazz.getDeclaredFields()) {
-            if (!field.isAnnotationPresent(ConfigField.class)) continue;
+            if (!field.isAnnotationPresent(ConfigField.class))
+                continue;
+
             String key = getKey(field);
-            if (!containsNestedKey(config, key)) return true;
+            if (!containsNestedKey(config, key))
+                return true;
         }
         return false;
     }
@@ -251,5 +263,39 @@ public class ConfigManager {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static IConfigParser<?> getParserForType(Type type) {
+        // Handle simple classes
+        if (type instanceof Class<?> clazz) {
+            return parsers.get(clazz);
+        }
+
+        // Handle generics
+        if (type instanceof ParameterizedType pt) {
+            Class<?> rawType = (Class<?>) pt.getRawType();
+            Type[] args = pt.getActualTypeArguments();
+
+            // Handle lists
+            if (List.class.isAssignableFrom(rawType)) {
+                IConfigParser<?> elementParser = getParserForType(args[0]);
+                return (elementParser != null) ? new ListParser<>(elementParser) : null;
+            }
+
+            if (Set.class.isAssignableFrom(rawType)) {
+                IConfigParser<?> elementParser = getParserForType(args[0]);
+                return (elementParser != null) ? new SetParser<>(elementParser) : null;
+            }
+
+            // Handle maps
+            if (Map.class.isAssignableFrom(rawType)) {
+                IConfigParser<?> keyParser = getParserForType(args[0]);
+                IConfigParser<?> valueParser = getParserForType(args[1]);
+                return (keyParser != null && valueParser != null)
+                        ? new MapParser<>(keyParser, valueParser) : null;
+            }
+        }
+
+        return null;
     }
 }

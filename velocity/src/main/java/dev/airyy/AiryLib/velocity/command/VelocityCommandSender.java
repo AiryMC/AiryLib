@@ -22,4 +22,9 @@ public class VelocityCommandSender implements ICommandSender {
     public void sendMessage(String message) {
         sender.sendMessage(Component.text(message));
     }
+
+    @Override
+    public boolean hasPermission(String permission) {
+        return sender.hasPermission(permission);
+    }
 }

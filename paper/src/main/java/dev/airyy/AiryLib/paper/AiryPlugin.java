@@ -6,7 +6,8 @@ import dev.airyy.AiryLib.core.command.argument.impl.BooleanArgument;
 import dev.airyy.AiryLib.core.command.argument.impl.IntegerArgument;
 import dev.airyy.AiryLib.core.command.argument.impl.StringArgument;
 import dev.airyy.AiryLib.core.config.ConfigManager;
-import dev.airyy.AiryLib.core.config.parser.ListParser;
+import dev.airyy.AiryLib.core.config.parser.StringParser;
+import dev.airyy.AiryLib.core.config.parser.UUIDParser;
 import dev.airyy.AiryLib.paper.command.PaperCommandManager;
 import dev.airyy.AiryLib.paper.command.argument.PlayerArgument;
 import dev.airyy.AiryLib.paper.config.parser.ComponentParser;
@@ -20,7 +21,7 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.ArrayList;
+import java.util.UUID;
 
 /**
  * Base paper implementation of the {@link IAiryPlugin} interface
@@ -54,6 +55,9 @@ public class AiryPlugin extends JavaPlugin implements IAiryPlugin {
         commandManager.registerArgumentParser(String.class, new StringArgument());
 
         commandManager.registerArgumentParser(Player.class, new PlayerArgument());
+
+        ConfigManager.registerParser(String.class, new StringParser());
+        ConfigManager.registerParser(UUID.class, new UUIDParser());
 
         ConfigManager.registerParser(Component.class, new ComponentParser());
         ConfigManager.registerParser(Location.class, new LocationParser());

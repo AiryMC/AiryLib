@@ -14,11 +14,15 @@ import dev.airyy.AiryLib.core.command.CommandManager;
 import dev.airyy.AiryLib.core.command.argument.impl.BooleanArgument;
 import dev.airyy.AiryLib.core.command.argument.impl.IntegerArgument;
 import dev.airyy.AiryLib.core.command.argument.impl.StringArgument;
+import dev.airyy.AiryLib.core.config.ConfigManager;
+import dev.airyy.AiryLib.core.config.parser.StringParser;
+import dev.airyy.AiryLib.core.config.parser.UUIDParser;
 import dev.airyy.AiryLib.velocity.command.VelocityCommandManager;
 import dev.airyy.AiryLib.velocity.command.argument.PlayerArgument;
 import org.slf4j.Logger;
 
 import java.nio.file.Path;
+import java.util.UUID;
 
 /**
  * Base velocity implementation of the {@link IAiryPlugin} interface
@@ -48,10 +52,13 @@ public class AiryPlugin implements IAiryPlugin {
         this.server = server;
         this.logger = logger;
         this.dataDirectory = dataDirectory;
+
     }
 
     @Subscribe
     private void onProxyInitialization(ProxyInitializeEvent event) {
+        instance = this;
+
         commandManager = new VelocityCommandManager(this);
 
         commandManager.registerArgumentParser(int.class, new IntegerArgument());
@@ -63,6 +70,9 @@ public class AiryPlugin implements IAiryPlugin {
         commandManager.registerArgumentParser(String.class, new StringArgument());
 
         commandManager.registerArgumentParser(Player.class, new PlayerArgument());
+
+        ConfigManager.registerParser(String.class, new StringParser());
+        ConfigManager.registerParser(UUID.class, new UUIDParser());
 
         // commandManager.register(new VelocityTestCommand());
 
